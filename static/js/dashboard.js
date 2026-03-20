@@ -1,22 +1,36 @@
 async function updatePlaylist() {
     try {
-        const response = await fetch('/api/playlist');
-        const data = await response.json();
+        // 1. Obtener la lista de canciones de nuestra API
+        const resPlaylist = await fetch('/api/playlist');
+        const dataPlaylist = await resPlaylist.json();
+        console.log(dataPlaylist);
+
+        // 2. Intentar obtener qué suena ahora mismo desde Icecast
+        // Nota: Usamos el endpoint json de Icecast
+        const resIcecast = await fetch('https://stream.juanobando.dev/status-json.xsl');
+        const dataIcecast = await resIcecast.json();
+
+        // Sacamos el nombre de la canción que Icecast reporta
+        const currentPath = dataIcecast.icestats.source.title || "";
+        const nowPlaying = currentPath.split('/').pop(); // Limpiamos la ruta
+
         const listContainer = document.getElementById('playlist-content');
 
-        listContainer.innerHTML = data.songs.map((song, i) => `
-            <div class="song ${i === 0 ? 'active' : ''}">
-                <span class="song-num">${i === 0 ? '▶' : i + 1}</span>
-                <span class="song-name">${song}</span>
-            </div>
-        `).join('');
+        listContainer.innerHTML = dataPlaylist.songs.map((song) => {
+            // Si el nombre coincide con lo que dice Icecast, la resaltamos
+            const isActive = song === nowPlaying ? 'active' : '';
+            const icon = song === nowPlaying ? '▶' : '•';
+            return `
+                <div class="song ${isActive}">
+                    <span class="song-num">${icon}</span>
+                    <span class="song-name">${song}</span>
+                </div>`;
+        }).join('');
+
     } catch (error) {
-        console.error("Error al obtener la playlist:", error);
+        console.error("Error actualizando Dashboard:", error);
     }
 }
 
-// Cargar al iniciar
-document.addEventListener('DOMContentLoaded', updatePlaylist);
-
-// Actualizar cada 20 segundos
-setInterval(updatePlaylist, 20000);
+setInterval(updatePlaylist, 10000); // Más rápido: cada 10 seg
+updatePlaylist();
