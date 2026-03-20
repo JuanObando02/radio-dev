@@ -2,10 +2,10 @@ version: '3.8'
 
 services:
   icecast:
-    image: pluja/icecast
+    image: moul/icecast
     container_name: radio_icecast
     ports:
-      - "8000:8000"
+      - "8005:8000"
     environment:
       - ICECAST_SOURCE_PASSWORD=${RADIO_PASS}
       - ICECAST_ADMIN_PASSWORD=${RADIO_ADMIN}
