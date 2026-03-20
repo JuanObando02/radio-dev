@@ -2,57 +2,66 @@ import os
 import subprocess
 import time
 import random
+import threading
+from flask import Flask, jsonify, render_template
 
-# Variables de entorno
+# --- CONFIGURACIÓN ---
 MUSIC_DIR = "/app/musica"
-ICECAST_HOST = os.environ.get("ICECAST_HOST", "icecast")
+ICECAST_HOST = os.environ.get("ICECAST_HOST", "icecast_dev")
 ICECAST_PORT = os.environ.get("ICECAST_PORT", "8000")
 ICECAST_USER = os.environ.get("ICECAST_USER", "source")
 ICECAST_PASS = os.environ.get("ICECAST_PASS", "supersecreto")
 ICECAST_MOUNT = os.environ.get("ICECAST_MOUNT", "/radio.mp3")
 
-# URL de conexión (Protocolo icecast:// para FFmpeg)
 ICECAST_URL = f"icecast://{ICECAST_USER}:{ICECAST_PASS}@{ICECAST_HOST}:{ICECAST_PORT}{ICECAST_MOUNT}"
 
-def generate_playlist_file():
-    """Crea un archivo de texto que FFmpeg usará como lista de reproducción"""
-    songs = [f for f in os.listdir(MUSIC_DIR) if f.lower().endswith(('.mp3', '.m4a'))]
-    random.shuffle(songs)
-    
-    with open("playlist.txt", "w") as f:
-        for song in songs:
-            # Escribimos la ruta absoluta de cada canción
-            f.write(f"file '{os.path.join(MUSIC_DIR, song)}'\n")
-    return len(songs)
+# --- DASHBOARD WEB (FLASK) ---
+app = Flask(__name__)
 
-def stream_radio():
-    print("--- Iniciando Stream ---", flush=True)
-    
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/playlist')
+def get_playlist():
+    songs = []
+    if os.path.exists("playlist.txt"):
+        with open("playlist.txt", "r") as f:
+            for line in f:
+                name = line.split('/')[-1].replace("'", "").strip()
+                songs.append(name)
+    return jsonify({"songs": songs})
+
+def start_web():
+    # Arranca el servidor web en el puerto 5000 (interno del contenedor)
+    app.run(host='0.0.0.0', port=5000)
+
+# --- MOTOR DE LA RADIO ---
+def run_radio():
+    print("--- Iniciando Motor de Radio (Dev) ---", flush=True)
     while True:
-        num_songs = generate_playlist_file()
-        if num_songs == 0:
-            print("No hay canciones, esperando...", flush=True)
-            time.sleep(10)
-            continue
-
-        command = [
-            "ffmpeg", "-re", 
-            "-stream_loop", "-1",              
-            "-f", "concat", "-safe", "0", 
-            "-i", "playlist.txt",              
-            "-vn",                             
-            "-c:a", "libmp3lame", "-b:a", "128k", "-ac", "2",
-            "-content_type", "audio/mpeg",
-            "-f", "mp3", 
-            ICECAST_URL
-        ]
+        # 1. Escanear canciones
+        all_songs = [f for f in os.listdir(MUSIC_DIR) if f.lower().endswith(('.mp3', '.m4a'))]
+        random.shuffle(all_songs)
         
-        print(f"Transmitiendo lista de {num_songs} canciones en bucle...", flush=True)
-        # Este proceso se quedará corriendo 'para siempre'
+        # 2. Crear archivo de lista
+        with open("playlist.txt", "w") as f:
+            for s in all_songs:
+                f.write(f"file '{os.path.join(MUSIC_DIR, s)}'\\n")
+        
+        # 3. Lanzar FFmpeg (Inifinito)
+        command = [
+            "ffmpeg", "-re", "-stream_loop", "-1",
+            "-f", "concat", "-safe", "0", "-i", "playlist.txt",
+            "-vn", "-c:a", "libmp3lame", "-b:a", "128k",
+            "-content_type", "audio/mpeg", "-f", "mp3", ICECAST_URL
+        ]
         subprocess.run(command)
-        print("El stream se cortó por alguna razón, reiniciando flujo principal...", flush=True)
+        time.sleep(2)
 
 if __name__ == "__main__":
-    # Esperamos a que Icecast esté listo
-    time.sleep(7)
-    stream_radio()
+    time.sleep(5) # Esperar a Icecast
+    # Lanzar la web en un hilo aparte
+    threading.Thread(target=start_web, daemon=True).start()
+    # Lanzar la radio en el hilo principal
+    run_radio()
