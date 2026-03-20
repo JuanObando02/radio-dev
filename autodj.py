@@ -15,7 +15,7 @@ ICECAST_URL = f"icecast://{ICECAST_USER}:{ICECAST_PASS}@{ICECAST_HOST}:{ICECAST_
 
 def get_playlist():
     # Busca todos los mp3 en la carpeta
-    songs = [os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR) if f.endswith('.mp3')]
+    songs = [os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR) if f.endswith('.mp3','.m4a')]
     random.shuffle(songs) # Modo aleatorio
     return songs
 

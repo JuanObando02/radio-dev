@@ -7,9 +7,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ICECAST_SOURCE_PASSWORD=supersecreto
-      - ICECAST_ADMIN_PASSWORD=adminsecreto
-      - ICECAST_PASSWORD=supersecreto
+      - ICECAST_SOURCE_PASSWORD=${RADIO_PASS}
+      - ICECAST_ADMIN_PASSWORD=${RADIO_ADMIN}
+      - ICECAST_PASSWORD=${RADIO_PASS}
     restart: unless-stopped
 
   autodj:
@@ -19,7 +19,7 @@ services:
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8000
       - ICECAST_USER=source
-      - ICECAST_PASS=supersecreto
+      - ICECAST_PASS=${RADIO_PASS}
       - ICECAST_MOUNT=/radio.mp3
     volumes:
       # AQUÍ: Reemplaza la ruta de la izquierda por la carpeta de tu VPS donde pondrás la música
