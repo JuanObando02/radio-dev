@@ -35,9 +35,13 @@ def stream_radio():
             
             command = [
                 "ffmpeg", "-re", "-i", song,
-                "-c:a", "libmp3lame", "-b:a", "128k",
+                "-vn",                               
+                "-c:a", "libmp3lame", 
+                "-b:a", "128k",
+                "-ac", "2",                          
                 "-content_type", "audio/mpeg",
-                "-f", "mp3", ICECAST_URL
+                "-f", "mp3", 
+                ICECAST_URL
             ]
             
             resultado = subprocess.run(command, capture_output=True, text=True)
