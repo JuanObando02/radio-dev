@@ -8,8 +8,10 @@ RUN pip install flask
 
 WORKDIR /app
 
-# Copiamos nuestro script al contenedor
+# Copiamos los archivos al contenedor
 COPY autodj.py .
+COPY templates/ ./templates/
+COPY static/ ./static/
 
 # Ejecutamos el script
 CMD ["python","-u", "autodj.py"]
