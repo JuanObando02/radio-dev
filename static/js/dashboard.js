@@ -1,22 +1,14 @@
-async function updatePlaylist() {
+async function updateDashboard() {
     try {
-        // 1. Pedir la lista local
-        const resPlaylist = await fetch('/api/playlist');
-        const dataPlaylist = await resPlaylist.json();
+        const res = await fetch('/api/playlist');
+        const data = await res.json();
 
-        // 2. Pedir el estado actual a través de NUESTRO PROXY
-        const resIcecast = await fetch('/api/now-playing'); // <--- Ruta interna
-        const dataIcecast = await resIcecast.json();
+        const container = document.getElementById('playlist-content');
+        const nowPlaying = data.now_playing;
 
-        // Extraer el nombre (ajustado según el JSON que me mostraste)
-        // Nota: Si 'title' no aparece, usaremos un fallback
-        const source = dataIcecast.icestats.source;
-        const currentTitle = source.title || "Transmitiendo...";
-
-        const listContainer = document.getElementById('playlist-content');
-        listContainer.innerHTML = dataPlaylist.songs.map((song, i) => {
-            // Comparamos si la canción de la lista es la que suena
-            const isActive = currentTitle.includes(song) ? 'active' : '';
+        container.innerHTML = data.songs.map((song, i) => {
+            // Comparamos el nombre exacto
+            const isActive = (song === nowPlaying) ? 'active' : '';
             return `
                 <div class="song ${isActive}">
                     <span class="song-num">${isActive ? '▶' : i + 1}</span>
@@ -24,10 +16,10 @@ async function updatePlaylist() {
                 </div>`;
         }).join('');
 
-    } catch (error) {
-        console.error("Error en el Dashboard:", error);
+    } catch (e) {
+        console.error("Error:", e);
     }
 }
 
-setInterval(updatePlaylist, 10000); // Más rápido: cada 10 seg
-updatePlaylist();
+setInterval(updateDashboard, 5000); // Actualizar cada 5 segundos
+updateDashboard();

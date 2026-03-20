@@ -16,21 +16,16 @@ ICECAST_MOUNT = os.environ.get("ICECAST_MOUNT", "/radio.mp3")
 
 ICECAST_URL = f"icecast://{ICECAST_USER}:{ICECAST_PASS}@{ICECAST_HOST}:{ICECAST_PORT}{ICECAST_MOUNT}"
 
+# --- ESTADO DE LA RADIO (Para la API) ---
+radio_state = {
+    "current_song": "Iniciando...",
+    "playlist": []
+}
+
 # --- DASHBOARD WEB (FLASK) ---
 app = Flask(__name__, 
             static_folder='static', 
             template_folder='templates')
-
-@app.route('/api/now-playing')
-def now_playing():
-    try:
-        # Tu Python llama internamente a Icecast (sin problemas de CORS)
-        # Usamos la URL que ya verificaste que funciona
-        url_icecast = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
-        response = requests.get(url_icecast, timeout=2)
-        return jsonify(response.json())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/')
 def index():
@@ -38,44 +33,71 @@ def index():
 
 @app.route('/api/playlist')
 def get_playlist():
-    songs = []
-    if os.path.exists("playlist.txt"):
-        with open("playlist.txt", "r") as f:
-            for line in f:
-                name = line.split('/')[-1].replace("'", "").strip()
-                songs.append(name)
-    return jsonify({"songs": songs})
+    """Devuelve la lista completa y la canción actual desde la memoria del script"""
+    return jsonify({
+        "songs": radio_state["playlist"],
+        "now_playing": radio_state["current_song"]
+    })
+
+@app.route('/api/now-playing')
+def now_playing_proxy():
+    """Proxy para consultar a Icecast (útil para ver estadísticas de oyentes)"""
+    try:
+        url_icecast = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
+        response = requests.get(url_icecast, timeout=2)
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def start_web():
-    # Arranca el servidor web en el puerto 5000 (interno del contenedor)
-    app.run(host='0.0.0.0', port=5000)
+    # El servidor web corre en el puerto 5000 interno
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
-# --- MOTOR DE LA RADIO ---
+# --- MOTOR DE LA RADIO (Lógica de Canción por Canción) ---
 def run_radio():
-    print("--- Iniciando Motor de Radio (Dev) ---", flush=True)
+    print("--- Iniciando Motor de Radio Inteligente (Dev) ---", flush=True)
+    
     while True:
-        # 1. Escanear canciones
-        all_songs = [f for f in os.listdir(MUSIC_DIR) if f.lower().endswith(('.mp3', '.m4a'))]
+        # 1. Escanear y mezclar canciones
+        all_songs = [f for f in os.listdir(MUSIC_DIR) if f.lower().endswith(('.mp3', '.m4a', '.wav'))]
+        if not all_songs:
+            print("No se encontraron canciones en /app/musica. Reintentando en 10s...")
+            time.sleep(10)
+            continue
+            
         random.shuffle(all_songs)
+        radio_state["playlist"] = all_songs
         
-        # 2. Crear archivo de lista
-        with open("playlist.txt", "w") as f:
-            for s in all_songs:
-                f.write(f"file '{os.path.join(MUSIC_DIR, s)}'\n")
-        
-        # 3. Lanzar FFmpeg (Inifinito)
-        command = [
-            "ffmpeg", "-re", "-stream_loop", "-1",
-            "-f", "concat", "-safe", "0", "-i", "playlist.txt",
-            "-vn", "-c:a", "libmp3lame", "-b:a", "128k",
-            "-content_type", "audio/mpeg", "-f", "mp3", ICECAST_URL
-        ]
-        subprocess.run(command)
-        time.sleep(2)
+        # 2. Reproducir una por una
+        for song in all_songs:
+            radio_state["current_song"] = song
+            song_path = os.path.join(MUSIC_DIR, song)
+            
+            print(f"▶ Reproduciendo: {song}", flush=True)
+            
+            # Comando FFmpeg para UNA sola canción con Metadatos
+            command = [
+                "ffmpeg", "-re", "-i", song_path,
+                "-vn",                                 # Sin video
+                "-c:a", "libmp3lame", "-b:a", "128k",   # Convertir a MP3 128k
+                "-metadata", f"title={song}",           # Enviar título a Icecast
+                "-content_type", "audio/mpeg", 
+                "-f", "mp3", ICECAST_URL
+            ]
+            
+            # Ejecutamos y esperamos a que la canción termine
+            subprocess.run(command)
+            
+            # Pequeña pausa técnica entre canciones
+            time.sleep(1)
 
 if __name__ == "__main__":
-    time.sleep(5) # Esperar a Icecast
-    # Lanzar la web en un hilo aparte
-    threading.Thread(target=start_web, daemon=True).start()
-    # Lanzar la radio en el hilo principal
+    # Esperar un poco a que el contenedor de Icecast esté listo
+    time.sleep(7)
+    
+    # Hilo 1: Servidor Web Flask
+    web_thread = threading.Thread(target=start_web, daemon=True)
+    web_thread.start()
+    
+    # Hilo 2: Motor de Radio (en el hilo principal)
     run_radio()
