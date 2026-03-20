@@ -47,7 +47,7 @@ def run_radio():
         # 2. Crear archivo de lista
         with open("playlist.txt", "w") as f:
             for s in all_songs:
-                f.write(f"file '{os.path.join(MUSIC_DIR, s)}'\\n")
+                f.write(f"file '{os.path.join(MUSIC_DIR, s)}'\n")
         
         # 3. Lanzar FFmpeg (Inifinito)
         command = [
