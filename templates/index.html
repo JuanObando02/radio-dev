@@ -10,11 +10,16 @@
 <body>
     <div class="container">
         <h1>📻 Dashboard de Transmisión</h1>
+
+        <!-- Reproductor embebido opcional -->
+        <audio id="radio-player" controls autoplay style="width:100%; margin-bottom: 20px;">
+            <source src="https://dev-stream.juanobando.dev/radio.mp3" type="audio/mpeg">
+        </audio>
+
         <div class="playlist-card" id="playlist-content">
-            <p style="padding: 20px;">Iniciando conexión con el servidor...</p>
+            <p style="padding: 20px;">Iniciando conexión...</p>
         </div>
     </div>
-
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 

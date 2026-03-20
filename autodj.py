@@ -58,38 +58,56 @@ def run_radio():
     print("--- Iniciando Motor de Radio Inteligente (Dev) ---", flush=True)
     
     while True:
-        # 1. Escanear y mezclar canciones
         all_songs = [f for f in os.listdir(MUSIC_DIR) if f.lower().endswith(('.mp3', '.m4a', '.wav'))]
         if not all_songs:
-            print("No se encontraron canciones en /app/musica. Reintentando en 10s...")
+            print("No se encontraron canciones. Reintentando en 10s...")
             time.sleep(10)
             continue
-            
+
         random.shuffle(all_songs)
         radio_state["playlist"] = all_songs
+
+        # Escribir playlist temporal para FFmpeg
+        playlist_path = "/tmp/playlist.txt"
+        with open(playlist_path, "w") as f:
+            for song in all_songs:
+                song_path = os.path.join(MUSIC_DIR, song)
+                f.write(f"file '{song_path}'\n")
+
+        # Un solo proceso FFmpeg que toca TODAS las canciones sin cortar
+        command = [
+            "ffmpeg", "-re",
+            "-f", "concat", "-safe", "0", "-i", playlist_path,
+            "-vn",
+            "-c:a", "libmp3lame", "-b:a", "128k",
+            "-content_type", "audio/mpeg",
+            "-f", "mp3", ICECAST_URL
+        ]
+
+        print("▶ Iniciando stream continuo...", flush=True)
+        subprocess.run(command)
+        # Cuando termina toda la playlist, vuelve a mezclar y empieza de nuevo
+
+def track_current_song():
+    """Consulta Icecast cada 5s para saber qué canción está sonando"""
+    while True:
+        try:
+            url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
+            response = requests.get(url, timeout=2)
+            data = response.json()
+            
+            # Navegar el JSON de Icecast para sacar el título
+            source = data["icestats"]["source"]
+            # Si hay varias fuentes, source es una lista
+            if isinstance(source, list):
+                source = source[0]
+            
+            title = source.get("title", "Desconocido")
+            radio_state["current_song"] = title
+        except Exception as e:
+            print(f"Error consultando Icecast: {e}", flush=True)
         
-        # 2. Reproducir una por una
-        for song in all_songs:
-            radio_state["current_song"] = song
-            song_path = os.path.join(MUSIC_DIR, song)
-            
-            print(f"▶ Reproduciendo: {song}", flush=True)
-            
-            # Comando FFmpeg para UNA sola canción con Metadatos
-            command = [
-                "ffmpeg", "-re", "-i", song_path,
-                "-vn",                                 # Sin video
-                "-c:a", "libmp3lame", "-b:a", "128k",   # Convertir a MP3 128k
-                "-metadata", f"title={song}",           # Enviar título a Icecast
-                "-content_type", "audio/mpeg", 
-                "-f", "mp3", ICECAST_URL
-            ]
-            
-            # Ejecutamos y esperamos a que la canción termine
-            subprocess.run(command)
-            
-            # Pequeña pausa técnica entre canciones
-            time.sleep(1)
+        time.sleep(5)
 
 if __name__ == "__main__":
     # Esperar un poco a que el contenedor de Icecast esté listo
@@ -99,5 +117,7 @@ if __name__ == "__main__":
     web_thread = threading.Thread(target=start_web, daemon=True)
     web_thread.start()
     
-    # Hilo 2: Motor de Radio (en el hilo principal)
+    tracker_thread = threading.Thread(target=track_current_song, daemon=True)
+    tracker_thread.start()
+
     run_radio()
