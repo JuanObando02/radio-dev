@@ -35,15 +35,12 @@ def stream_radio():
             time.sleep(10)
             continue
 
-        # Este comando de FFmpeg es el 'Truco Maestro'
-        # -f concat: Une los archivos
-        # -safe 0: Permite rutas absolutas
-        # -stream_loop -1: Cuando llegue al final de la lista, empieza de nuevo SOLITO
         command = [
             "ffmpeg", "-re", 
-            "-f", "concat", "-safe", "0", "-i", "playlist.txt",
-            "-stream_loop", "-1", 
-            "-vn",
+            "-stream_loop", "-1",              
+            "-f", "concat", "-safe", "0", 
+            "-i", "playlist.txt",              
+            "-vn",                             
             "-c:a", "libmp3lame", "-b:a", "128k", "-ac", "2",
             "-content_type", "audio/mpeg",
             "-f", "mp3", 
