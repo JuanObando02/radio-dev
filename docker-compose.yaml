@@ -3,9 +3,9 @@ version: '3.8'
 services:
   icecast:
     image: moul/icecast
-    container_name: radio_icecast
+    container_name: ${CONTAINER_NAME_ICECAST:-radio_icecast}
     ports:
-      - "8005:8000"
+      - "${PORT_ICECAST:-8005}:8000"
     environment:
       - ICECAST_SOURCE_PASSWORD=${RADIO_PASS}
       - ICECAST_ADMIN_PASSWORD=${RADIO_ADMIN}
@@ -14,7 +14,9 @@ services:
 
   autodj:
     build: .
-    container_name: radio_autodj
+    container_name: ${CONTAINER_NAME_AUTODJ:-radio_autodj}
+    ports:
+      - "${PORT_DASHBOARD:-5000}:5000"
     environment:
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8000
@@ -22,7 +24,6 @@ services:
       - ICECAST_PASS=${RADIO_PASS}
       - ICECAST_MOUNT=/radio.mp3
     volumes:
-      # AQUÍ: Reemplaza la ruta de la izquierda por la carpeta de tu VPS donde pondrás la música
       - /home/ubuntu/musica:/app/musica
     depends_on:
       - icecast
