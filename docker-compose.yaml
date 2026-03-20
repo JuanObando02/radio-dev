@@ -5,7 +5,7 @@ services:
     image: moul/icecast
     container_name: radio_icecast
     ports:
-      - "8000:8000"
+      - "8005:8000"
     environment:
       - ICECAST_SOURCE_PASSWORD=supersecreto
       - ICECAST_ADMIN_PASSWORD=adminsecreto
