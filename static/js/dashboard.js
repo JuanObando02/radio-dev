@@ -7,6 +7,10 @@ async function updateDashboard() {
         const data = await playlistRes.json();
         const stats = await statsRes.json();
 
+        if (!data.songs || data.songs.length === 0) {
+            container.innerHTML = '<p style="padding: 20px;">⏱ Calculando playlist...</p>';
+            return;
+        }
         // --- Oyentes ---
         const source = stats?.icestats?.source;
         const listeners = source?.listeners ?? '—';
