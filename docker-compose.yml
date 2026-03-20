@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  icecast:
+    image: pluja/icecast
+    container_name: radio_icecast
+    ports:
+      - "8000:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=supersecreto
+      - ICECAST_ADMIN_PASSWORD=adminsecreto
+      - ICECAST_PASSWORD=supersecreto
+    restart: unless-stopped
+
+  autodj:
+    build: .
+    container_name: radio_autodj
+    environment:
+      - ICECAST_HOST=icecast
+      - ICECAST_PORT=8000
+      - ICECAST_USER=source
+      - ICECAST_PASS=supersecreto
+      - ICECAST_MOUNT=/radio.mp3
+    volumes:
+      # AQUÍ: Reemplaza la ruta de la izquierda por la carpeta de tu VPS donde pondrás la música
+      - /home/ubuntu/musica:/app/musica
+    depends_on:
+      - icecast
+    restart: unless-stopped
