@@ -3,6 +3,7 @@ import subprocess
 import time
 import random
 import threading
+import requests
 from flask import Flask, jsonify, render_template
 
 # --- CONFIGURACIÓN ---
@@ -16,7 +17,20 @@ ICECAST_MOUNT = os.environ.get("ICECAST_MOUNT", "/radio.mp3")
 ICECAST_URL = f"icecast://{ICECAST_USER}:{ICECAST_PASS}@{ICECAST_HOST}:{ICECAST_PORT}{ICECAST_MOUNT}"
 
 # --- DASHBOARD WEB (FLASK) ---
-app = Flask(__name__)
+app = Flask(__name__, 
+            static_folder='static', 
+            template_folder='templates')
+
+@app.route('/api/now-playing')
+def now_playing():
+    try:
+        # Tu Python llama internamente a Icecast (sin problemas de CORS)
+        # Usamos la URL que ya verificaste que funciona
+        url_icecast = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
+        response = requests.get(url_icecast, timeout=2)
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/')
 def index():
