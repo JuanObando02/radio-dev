@@ -3,6 +3,7 @@ import subprocess
 import time
 import random
 
+# Variables de entorno
 MUSIC_DIR = "/app/musica"
 ICECAST_HOST = os.environ.get("ICECAST_HOST", "icecast")
 ICECAST_PORT = os.environ.get("ICECAST_PORT", "8000")
@@ -10,7 +11,7 @@ ICECAST_USER = os.environ.get("ICECAST_USER", "source")
 ICECAST_PASS = os.environ.get("ICECAST_PASS", "supersecreto")
 ICECAST_MOUNT = os.environ.get("ICECAST_MOUNT", "/radio.mp3")
 
-# URL de conexión interna en Docker
+# URL de conexión (Protocolo icecast:// para FFmpeg)
 ICECAST_URL = f"icecast://{ICECAST_USER}:{ICECAST_PASS}@{ICECAST_HOST}:{ICECAST_PORT}{ICECAST_MOUNT}"
 
 def get_playlist():
@@ -29,18 +30,23 @@ def stream_radio():
             continue
 
         for song in playlist:
-            print(f"Reproduciendo: {os.path.basename(song)}", flush=True)
-            # Usamos FFmpeg para codificar a 128kbps y enviar al servidor Icecast
+            nombre = os.path.basename(song)
+            print(f"Reproduciendo ahora: {nombre}", flush=True)
+            
             command = [
                 "ffmpeg", "-re", "-i", song,
                 "-c:a", "libmp3lame", "-b:a", "128k",
                 "-content_type", "audio/mpeg",
                 "-f", "mp3", ICECAST_URL
             ]
-            # Ejecutamos el comando de forma silenciosa y esperamos a que termine la canción
-            subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            resultado = subprocess.run(command, capture_output=True, text=True)
+            
+            if resultado.returncode != 0:
+                print(f"ERROR en FFmpeg con {nombre}: {resultado.stderr}", flush=True)
+                time.sleep(2) # Esperar un poco antes de reintentar
 
 if __name__ == "__main__":
-    # Le damos 5 segundos a Icecast para que termine de encender antes de transmitir
-    time.sleep(5)
+    # Esperamos a que Icecast esté listo
+    time.sleep(7)
     stream_radio()
