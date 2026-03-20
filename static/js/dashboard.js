@@ -1,10 +1,25 @@
-const audio = document.getElementById('radio-player');
-
 async function updateDashboard() {
     try {
-        const res = await fetch('/api/playlist');
-        const data = await res.json();
+        const [playlistRes, statsRes] = await Promise.all([
+            fetch('/api/playlist'),
+            fetch('/api/now-playing')
+        ]);
+        const data = await playlistRes.json();
+        const stats = await statsRes.json();
 
+        // --- Oyentes ---
+        const source = stats?.icestats?.source;
+        const listeners = source?.listeners ?? '—';
+        const peak = source?.listener_peak ?? '—';
+        const streamStart = source?.stream_start
+            ? new Date(source.stream_start).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+            : '—';
+
+        document.getElementById('listeners').textContent = listeners;
+        document.getElementById('peak').textContent = peak;
+        document.getElementById('stream-start').textContent = streamStart;
+
+        // --- Playlist ---
         const container = document.getElementById('playlist-content');
         const nowPlaying = data.now_playing;
 
@@ -22,5 +37,5 @@ async function updateDashboard() {
     }
 }
 
-setInterval(updateDashboard, 5000); // cada 5s en vez de 10
+setInterval(updateDashboard, 5000);
 updateDashboard();

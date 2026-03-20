@@ -15,7 +15,16 @@
         <audio id="radio-player" controls autoplay style="width:100%; margin-bottom: 20px;">
             <source src="https://dev-stream.juanobando.dev/radio.mp3" type="audio/mpeg">
         </audio>
-
+        <div class="stats-bar">
+            <div class="stat">
+                <span class="stat-label">🎧 Oyentes ahora</span>
+                <span class="stat-value" id="listeners">—</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">📈 Pico máximo</span>
+                <span class="stat-value" id="peak">—</span>
+            </div>
+        </div>
         <div class="playlist-card" id="playlist-content">
             <p style="padding: 20px;">Iniciando conexión...</p>
         </div>
