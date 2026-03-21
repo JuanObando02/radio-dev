@@ -1,22 +1,19 @@
-# --- Configuración desde variables de entorno ---
-icecast_host = getenv("ICECAST_HOST")
-icecast_port = int_of_string(getenv("ICECAST_PORT"))
-icecast_pass = getenv("ICECAST_PASS")
-icecast_mount = getenv("ICECAST_MOUNT")
-music_dir = "/app/musica"
+settings.server.telnet.set(true)
+settings.server.telnet.bind_addr.set("0.0.0.0")
+settings.server.telnet.port.set(1234)
 
-# --- Cola dinámica (aquí Flask encola canciones) ---
+# --- Cola dinámica ---
 radio_queue = request.queue(id="radio_queue")
 
-# --- Fallback: reproduce carpeta en shuffle infinito ---
+# --- Fallback: carpeta en shuffle ---
 fallback_playlist = playlist(
   id="fallback",
   mode="randomize",
-  reload=60,
-  music_dir
+  reload_mode="watch",
+  "/app/musica"
 )
 
-# --- Fuente final: primero la cola, si no hay nada el fallback ---
+# --- Fuente final ---
 radio = fallback(
   id="radio",
   track_sensitive=true,
@@ -26,14 +23,11 @@ radio = fallback(
 # --- Salida hacia Icecast ---
 output.icecast(
   %mp3(bitrate=128),
-  host=icecast_host,
-  port=icecast_port,
-  password=icecast_pass,
-  mount=icecast_mount,
+  host=environment.get("ICECAST_HOST"),
+  port=int_of_string(environment.get("ICECAST_PORT")),
+  password=environment.get("ICECAST_PASS"),
+  mount=environment.get("ICECAST_MOUNT"),
   name="Radio Dev",
   description="AutoDJ con Liquidsoap",
   radio
 )
-
-# --- API Telnet en puerto 1234 ---
-server.telnet(bind_addr="0.0.0.0", port=1234)
