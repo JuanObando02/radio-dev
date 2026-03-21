@@ -1,8 +1,8 @@
 import os
 import socket
 import time
-import random
 import threading
+import queue
 import requests
 from flask import Flask, jsonify, render_template
 
@@ -14,12 +14,15 @@ LIQUIDSOAP_HOST = os.environ.get("LIQUIDSOAP_HOST", "liquidsoap")
 LIQUIDSOAP_PORT = int(os.environ.get("LIQUIDSOAP_PORT", "1234"))
 STREAM_URL = os.environ.get("STREAM_URL", "http://localhost:8000/radio.mp3")
 
+# --- COLA PROPIA (fuente de verdad) ---
+# Lista ordenada de canciones pendientes
+song_queue = []
+queue_lock = threading.Lock()
+
 # --- ESTADO DE LA RADIO ---
 radio_state = {
-    "current_song": "Iniciando...",
-    "current_title": "Iniciando...",   # ← título limpio de Icecast
+    "current_title": "Iniciando...",
     "playlist": [],
-    "queue": [],
 }
 state_lock = threading.Lock()
 
@@ -37,38 +40,52 @@ def liq_command(cmd):
         print(f"Error telnet Liquidsoap: {e}", flush=True)
         return None
 
-def get_filename_from_rid(rid):
-    """Obtiene el nombre de archivo de un RID de Liquidsoap."""
-    response = liq_command(f"request.metadata {rid}")
-    if response:
-        for line in response.splitlines():
-            if line.startswith("filename="):
-                path = line.split("=", 1)[1].strip()
-                return os.path.basename(path)
-    return None
-
-def get_queue_liq():
-    """Consulta la cola real de Liquidsoap y retorna lista de nombres de canciones."""
+def get_liq_queue_size():
+    """Cuántas canciones tiene Liquidsoap en su cola interna."""
     response = liq_command("radio_queue.queue")
     if not response:
-        return []
-    rids = [r.strip() for r in response.splitlines() if r.strip() and r.strip() != "END"]
-    songs = []
-    for rid in rids:
-        name = get_filename_from_rid(rid)
-        if name:
-            songs.append(name)
-    return songs
+        return 0
+    rids = [r.strip() for r in response.splitlines()
+            if r.strip() and r.strip() != "END"]
+    return len(rids)
 
-def enqueue_song(song_name):
-    """Encola una canción en Liquidsoap."""
+def push_to_liquidsoap(song_name):
+    """Envía una canción a la cola de Liquidsoap."""
     song_path = os.path.join(MUSIC_DIR, song_name)
     response = liq_command(f'radio_queue.push {song_path}')
-    print(f"Encolada: {song_name} → {response}", flush=True)
-    return response
+    print(f"→ Liquidsoap: {song_name} ({response})", flush=True)
+    return response is not None
 
-def get_current_song_icecast():
-    """Lee el título actual desde Icecast."""
+# --- GESTOR DE COLA ---
+def queue_manager():
+    """
+    Hilo que gestiona la cola propia.
+    Mantiene siempre 1 canción en Liquidsoap para que no haya
+    esperas pero tampoco se pierdan canciones de la cola.
+    """
+    print("🎵 Gestor de cola iniciado", flush=True)
+    while True:
+        with queue_lock:
+            pending = len(song_queue)
+            next_song = song_queue[0] if song_queue else None
+
+        if next_song:
+            liq_size = get_liq_queue_size()
+            # Solo enviamos a Liquidsoap si su cola está vacía
+            if liq_size == 0:
+                with queue_lock:
+                    if song_queue:
+                        song = song_queue.pop(0)
+                success = push_to_liquidsoap(song)
+                if not success:
+                    # Si falla, devolver al frente de la cola
+                    with queue_lock:
+                        song_queue.insert(0, song)
+
+        time.sleep(2)
+
+# --- TRACKER: canción actual desde Icecast ---
+def get_current_title():
     try:
         url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
         response = requests.get(url, timeout=2)
@@ -79,21 +96,15 @@ def get_current_song_icecast():
         print(f"Error consultando Icecast: {e}", flush=True)
     return None
 
-# --- TRACKER: actualiza current_song y queue cada 3 segundos ---
 def track_current_song():
     while True:
-        title = get_current_song_icecast()
+        title = get_current_title()
         if title:
             with state_lock:
                 radio_state["current_title"] = title
-
-        queue = get_queue_liq()
-        with state_lock:
-            radio_state["queue"] = queue
-
         time.sleep(3)
 
-# --- SCANNER: mantiene la playlist actualizada ---
+# --- SCANNER: lista de canciones ---
 def scan_playlist():
     while True:
         songs = sorted([
@@ -116,11 +127,15 @@ def index():
 @app.route('/api/playlist')
 def get_playlist():
     with state_lock:
-        return jsonify({
-            "songs": radio_state["playlist"],
-            "now_playing": radio_state["current_title"],  # ← cambia esto
-            "queue": radio_state["queue"],
-        })
+        songs = radio_state["playlist"]
+        title = radio_state["current_title"]
+    with queue_lock:
+        q = list(song_queue)
+    return jsonify({
+        "songs": songs,
+        "now_playing": title,
+        "queue": q,
+    })
 
 @app.route('/api/now-playing')
 def now_playing_proxy():
@@ -139,11 +154,20 @@ def play_next(song_name):
     if song_name not in playlist:
         return jsonify({"error": "Canción no encontrada"}), 404
 
-    result = enqueue_song(song_name)
-    if result is not None:
-        return jsonify({"ok": True, "queued": song_name})
-    else:
-        return jsonify({"error": "No se pudo encolar"}), 500
+    # Verificar si ya está en la cola
+    with queue_lock:
+        if song_name in song_queue:
+            return jsonify({"error": "La canción ya está en la cola"}), 400
+        song_queue.append(song_name)
+        position = len(song_queue)
+
+    print(f"📋 Encolada en posición {position}: {song_name}", flush=True)
+    return jsonify({"ok": True, "queued": song_name, "position": position})
+
+@app.route('/api/queue')
+def get_queue():
+    with queue_lock:
+        return jsonify({"queue": list(song_queue)})
 
 def start_web():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
@@ -164,6 +188,7 @@ if __name__ == "__main__":
     threading.Thread(target=start_web, daemon=True).start()
     threading.Thread(target=track_current_song, daemon=True).start()
     threading.Thread(target=scan_playlist, daemon=True).start()
+    threading.Thread(target=queue_manager, daemon=True).start()
 
     print("📻 Radio lista.", flush=True)
 
