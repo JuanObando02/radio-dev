@@ -46,6 +46,7 @@ services:
       - DASHBOARD_URL=${DASHBOARD_URL}
     volumes:
       - /home/ubuntu/musica:/app/musica
+      - /home/ubuntu/cookies.txt:/app/cookies.txt
     depends_on:
       - icecast
       - liquidsoap
