@@ -4,7 +4,8 @@ import time
 import threading
 import queue
 import requests
-from flask import Flask, jsonify, render_template
+import subprocess
+from flask import Flask, jsonify, render_template, request
 
 # --- CONFIGURACIÓN ---
 MUSIC_DIR = "/app/musica"
@@ -13,6 +14,7 @@ ICECAST_PORT = os.environ.get("ICECAST_PORT", "8000")
 LIQUIDSOAP_HOST = os.environ.get("LIQUIDSOAP_HOST", "liquidsoap")
 LIQUIDSOAP_PORT = int(os.environ.get("LIQUIDSOAP_PORT", "1234"))
 STREAM_URL = os.environ.get("STREAM_URL", "http://localhost:8000/radio.mp3")
+N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "")
 
 # --- COLA PROPIA (fuente de verdad) ---
 # Lista ordenada de canciones pendientes
@@ -124,6 +126,62 @@ app = Flask(__name__,
 def index():
     return render_template('index.html', stream_url=STREAM_URL)
 
+@app.route('/api/search-youtube', methods=['POST'])
+def search_youtube():
+    data = request.get_json()
+    query = data.get('query')
+    if not query:
+        return jsonify({"error": "Query requerida"}), 400
+
+    try:
+        result = subprocess.run([
+            "yt-dlp",
+            f"ytsearch5:{query}",  # top 5 resultados
+            "--dump-json",
+            "--flat-playlist",
+            "--no-download"
+        ], capture_output=True, text=True, timeout=15)
+
+        videos = []
+        for line in result.stdout.strip().splitlines():
+            try:
+                v = __import__('json').loads(line)
+                videos.append({
+                    "title": v.get("title"),
+                    "channel": v.get("channel") or v.get("uploader"),
+                    "duration": str(int(v.get("duration", 0) // 60)) + ":" + str(int(v.get("duration", 0) % 60)).zfill(2),
+                    "url": f"https://youtube.com/watch?v={v.get('id')}",
+                    "thumbnail": v.get("thumbnail"),
+                })
+            except:
+                continue
+
+        return jsonify({"results": videos})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/request-download', methods=['POST'])
+def request_download():
+    data = request.get_json()
+    url = data.get('url')
+    title = data.get('title')
+    channel = data.get('channel')
+    duration = data.get('duration')
+
+    if not url:
+        return jsonify({"error": "URL requerida"}), 400
+
+    try:
+        res = requests.post(N8N_WEBHOOK_URL, json={
+            "url": url,
+            "title": title,
+            "channel": channel,
+            "duration": duration
+        }, timeout=5)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/playlist')
 def get_playlist():
     with state_lock:
@@ -171,6 +229,30 @@ def get_queue():
 
 def start_web():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
+@app.route('/api/download', methods=['POST'])
+def download_song():
+    data = request.get_json()
+    url = data.get('url')
+    if not url:
+        return jsonify({"error": "URL requerida"}), 400
+
+    def run_download():
+        print(f"⬇ Descargando: {url}", flush=True)
+        result = subprocess.run([
+            "yt-dlp", "-x",
+            "--audio-format", "mp3",
+            "--audio-quality", "0",
+            "-o", f"{MUSIC_DIR}/%(title)s.%(ext)s",
+            url
+        ], capture_output=True, text=True)
+        print(result.stdout, flush=True)
+        if result.returncode != 0:
+            print(f"Error: {result.stderr}", flush=True)
+
+    # Correr en hilo para no bloquear Flask
+    threading.Thread(target=run_download, daemon=True).start()
+    return jsonify({"ok": True, "message": "Descarga iniciada"})
 
 if __name__ == "__main__":
     print("Esperando a que los servicios estén listos...", flush=True)

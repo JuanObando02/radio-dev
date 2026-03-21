@@ -110,5 +110,71 @@ async function playNext(songName, btn) {
     }
 }
 
+async function searchYoutube() {
+    const query = document.getElementById('yt-search-input').value.trim();
+    const container = document.getElementById('yt-results');
+
+    if (!query) return;
+
+    container.innerHTML = '<p class="search-empty">🔍 Buscando...</p>';
+
+    try {
+        const res = await fetch('/api/search-youtube', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+
+        if (!data.results || data.results.length === 0) {
+            container.innerHTML = '<p class="search-empty">No se encontraron resultados</p>';
+            return;
+        }
+
+        container.innerHTML = data.results.map(v => `
+            <div class="yt-result">
+                <img class="yt-thumb" src="${v.thumbnail}" onerror="this.style.display='none'">
+                <div class="yt-info">
+                    <div class="yt-title" title="${v.title}">${v.title}</div>
+                    <div class="yt-meta">${v.channel} · ${v.duration}</div>
+                </div>
+                <button class="btn-next" onclick="requestDownload('${v.url.replace(/'/g, "\\'")}', '${v.title.replace(/'/g, "\\'")}', '${v.channel.replace(/'/g, "\\'")}', '${v.duration}', this)">
+                    ⬇ Pedir
+                </button>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        container.innerHTML = '<p class="search-empty">Error al buscar</p>';
+    }
+}
+
+async function requestDownload(url, title, channel, duration, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    try {
+        const res = await fetch('/api/request-download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, title, channel, duration })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            btn.textContent = '✓ Enviado';
+        } else {
+            btn.textContent = 'Error';
+            btn.disabled = false;
+        }
+    } catch (e) {
+        btn.textContent = 'Error';
+        btn.disabled = false;
+    }
+}
+
+// Enter para buscar en YouTube
+document.getElementById('yt-search-input')
+    .addEventListener('keydown', e => { if (e.key === 'Enter') searchYoutube(); });
+
 setInterval(updateDashboard, 5000);
 updateDashboard();
