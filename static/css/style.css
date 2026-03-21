@@ -259,3 +259,42 @@ h1 {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.yt-result {
+    padding: 12px 20px;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.yt-result:hover {
+    background: #282828;
+}
+
+.yt-thumb {
+    width: 64px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.yt-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.yt-title {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.yt-meta {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 2px;
+}
