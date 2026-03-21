@@ -18,13 +18,12 @@ STREAM_URL = os.environ.get("STREAM_URL", "http://localhost:8000/radio.mp3")
 radio_state = {
     "current_song": "Iniciando...",
     "playlist": [],
-    "next_song": None,
+    "queue": [],  # cola real de Liquidsoap
 }
 state_lock = threading.Lock()
 
 # --- COMUNICACIÓN CON LIQUIDSOAP VÍA TELNET ---
 def liq_command(cmd):
-    """Envía un comando a Liquidsoap y retorna la respuesta."""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(5)
@@ -36,6 +35,29 @@ def liq_command(cmd):
     except Exception as e:
         print(f"Error telnet Liquidsoap: {e}", flush=True)
         return None
+
+def get_filename_from_rid(rid):
+    """Obtiene el nombre de archivo de un RID de Liquidsoap."""
+    response = liq_command(f"request.metadata {rid}")
+    if response:
+        for line in response.splitlines():
+            if line.startswith("filename="):
+                path = line.split("=", 1)[1].strip()
+                return os.path.basename(path)
+    return None
+
+def get_queue_liq():
+    """Consulta la cola real de Liquidsoap y retorna lista de nombres de canciones."""
+    response = liq_command("radio_queue.queue")
+    if not response:
+        return []
+    rids = [r.strip() for r in response.splitlines() if r.strip() and r.strip() != "END"]
+    songs = []
+    for rid in rids:
+        name = get_filename_from_rid(rid)
+        if name:
+            songs.append(name)
+    return songs
 
 def enqueue_song(song_name):
     """Encola una canción en Liquidsoap."""
@@ -54,13 +76,18 @@ def get_current_song_liq():
                 return os.path.basename(path)
     return None
 
-# --- TRACKER: actualiza current_song cada 3 segundos ---
+# --- TRACKER: actualiza current_song y queue cada 3 segundos ---
 def track_current_song():
     while True:
         song = get_current_song_liq()
         if song:
             with state_lock:
                 radio_state["current_song"] = song
+
+        queue = get_queue_liq()
+        with state_lock:
+            radio_state["queue"] = queue
+
         time.sleep(3)
 
 # --- SCANNER: mantiene la playlist actualizada ---
@@ -89,12 +116,11 @@ def get_playlist():
         return jsonify({
             "songs": radio_state["playlist"],
             "now_playing": radio_state["current_song"],
-            "next_song": radio_state["next_song"],
+            "queue": radio_state["queue"],
         })
 
 @app.route('/api/now-playing')
 def now_playing_proxy():
-    """Proxy para estadísticas de Icecast."""
     try:
         url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
         response = requests.get(url, timeout=2)
@@ -104,7 +130,6 @@ def now_playing_proxy():
 
 @app.route('/api/play-next/<path:song_name>', methods=['POST'])
 def play_next(song_name):
-    """Encola una canción para que suene de siguiente."""
     with state_lock:
         playlist = radio_state["playlist"]
 
@@ -113,8 +138,6 @@ def play_next(song_name):
 
     result = enqueue_song(song_name)
     if result is not None:
-        with state_lock:
-            radio_state["next_song"] = song_name
         return jsonify({"ok": True, "queued": song_name})
     else:
         return jsonify({"error": "No se pudo encolar"}), 500
@@ -123,11 +146,9 @@ def start_web():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
 if __name__ == "__main__":
-    # Esperar a que Liquidsoap e Icecast estén listos
     print("Esperando a que los servicios estén listos...", flush=True)
     time.sleep(10)
 
-    # Escanear canciones inicial
     songs = sorted([
         f for f in os.listdir(MUSIC_DIR)
         if f.lower().endswith(('.mp3', '.m4a', '.wav'))
@@ -137,17 +158,11 @@ if __name__ == "__main__":
 
     print(f"✅ {len(songs)} canciones encontradas", flush=True)
 
-    # Hilo 1: Servidor Web Flask
     threading.Thread(target=start_web, daemon=True).start()
-
-    # Hilo 2: Tracker de canción actual
     threading.Thread(target=track_current_song, daemon=True).start()
-
-    # Hilo 3: Scanner de playlist
     threading.Thread(target=scan_playlist, daemon=True).start()
 
     print("📻 Radio lista.", flush=True)
 
-    # Mantener el proceso vivo
     while True:
         time.sleep(60)

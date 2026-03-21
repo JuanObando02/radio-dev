@@ -11,10 +11,10 @@
     <div class="container">
         <h1>📻 Dashboard de Transmisión</h1>
 
-        <!-- Reproductor embebido opcional -->
         <audio id="radio-player" controls autoplay style="width:100%; margin-bottom: 20px;">
             <source src="{{ stream_url }}" type="audio/mpeg">
         </audio>
+
         <div class="stats-bar">
             <div class="stat">
                 <span class="stat-label">🎧 Oyentes ahora</span>
@@ -29,9 +29,42 @@
                 <span class="stat-value" id="stream-start">—</span>
             </div>
         </div>
-        <div class="playlist-card" id="playlist-content">
-            <p style="padding: 20px;">Iniciando conexión...</p>
+
+        <!-- Cola de reproducción -->
+        <p class="section-title">▶ Sonando y en cola</p>
+        <div class="playlist-card" style="margin-bottom: 24px;">
+            <div class="playlist-scroll" style="height: auto; max-height: 200px;">
+                <div id="queue-content">
+                    <p class="search-empty">Cargando cola...</p>
+                </div>
+            </div>
         </div>
+
+        <!-- Lista completa -->
+        <p class="section-title">Todas las canciones</p>
+        <div class="playlist-card">
+            <div class="playlist-scroll" id="playlist-scroll">
+                <div id="playlist-content">
+                    <p style="padding: 20px; color: #555;">Cargando playlist...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buscador -->
+        <p class="section-title" style="margin-top: 24px;">Buscar canción</p>
+        <div class="search-card">
+            <div class="search-header">
+                <div class="search-input-wrap">
+                    <input class="search-input" id="search-input" type="text"
+                        placeholder="Escribe el nombre de la canción..." oninput="searchSongs(this.value)"
+                        autocomplete="off">
+                </div>
+            </div>
+            <div class="search-results" id="search-results">
+                <p class="search-empty">Escribe para buscar canciones</p>
+            </div>
+        </div>
+
     </div>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

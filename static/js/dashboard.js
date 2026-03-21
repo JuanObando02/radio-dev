@@ -1,3 +1,7 @@
+let allSongs = [];
+let currentSong = '';
+let queue = [];
+
 async function updateDashboard() {
     try {
         const [playlistRes, statsRes] = await Promise.all([
@@ -9,62 +13,91 @@ async function updateDashboard() {
 
         // --- Oyentes ---
         const source = stats?.icestats?.source;
-        const listeners = source?.listeners ?? '—';
-        const peak = source?.listener_peak ?? '—';
-        const streamStart = source?.stream_start
+        document.getElementById('listeners').textContent = source?.listeners ?? '—';
+        document.getElementById('peak').textContent = source?.listener_peak ?? '—';
+        document.getElementById('stream-start').textContent = source?.stream_start
             ? new Date(source.stream_start).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
             : '—';
 
-        document.getElementById('listeners').textContent = listeners;
-        document.getElementById('peak').textContent = peak;
-        document.getElementById('stream-start').textContent = streamStart;
-
-        // --- Playlist ---
-        const container = document.getElementById('playlist-content');
-
         if (!data.songs || data.songs.length === 0) {
-            container.innerHTML = '<p style="padding: 20px;">⏱ Cargando playlist...</p>';
+            document.getElementById('playlist-content').innerHTML =
+                '<p style="padding: 20px; color: #555;">⏱ Cargando playlist...</p>';
             return;
         }
 
-        const nowPlaying = data.now_playing;
-        const nextSong = data.next_song;
+        allSongs = data.songs;
+        currentSong = data.now_playing;
+        queue = data.queue || [];
 
-        container.innerHTML = data.songs.map((song, i) => {
-            const isActive = song === nowPlaying ? 'active' : '';
-            const isNext = song === nextSong ? 'next' : '';
+        renderPlaylist();
+        renderQueue();
 
-            let indicator = i + 1;
-            if (isActive) indicator = '▶';
-            else if (isNext) indicator = '⏭';
-
-            return `
-                <div class="song ${isActive} ${isNext}">
-                    <span class="song-num">${indicator}</span>
-                    <span class="song-name">${song}</span>
-                    ${!isActive ? `
-                    <button class="btn-next" onclick="playNext('${song.replace(/'/g, "\\'")}', this)">
-                        Siguiente
-                    </button>` : ''}
-                </div>`;
-        }).join('');
+        // Scroll automático a la canción activa
+        const activeEl = document.querySelector('#playlist-scroll .song.active');
+        if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
     } catch (e) {
         console.error("Error:", e);
     }
 }
 
+function songRow(song, indicator, showBtn = true) {
+    const isActive = song === currentSong;
+    const btnHtml = showBtn && !isActive
+        ? `<button class="btn-next" onclick="playNext('${song.replace(/'/g, "\\'")}', this)">+ Cola</button>`
+        : '';
+    return `
+        <div class="song ${isActive ? 'active' : ''}">
+            <span class="song-num">${indicator}</span>
+            <span class="song-name" title="${song}">${song}</span>
+            ${btnHtml}
+        </div>`;
+}
+
+function renderPlaylist() {
+    const container = document.getElementById('playlist-content');
+    container.innerHTML = allSongs.map((song, i) => {
+        const isActive = song === currentSong;
+        return songRow(song, isActive ? '▶' : i + 1);
+    }).join('');
+}
+
+function renderQueue() {
+    const container = document.getElementById('queue-content');
+    if (queue.length === 0) {
+        container.innerHTML = '<p class="search-empty">La cola está vacía — las canciones siguientes las elige Liquidsoap en shuffle</p>';
+        return;
+    }
+    container.innerHTML = queue.map((song, i) => songRow(song, i + 1, false)).join('');
+}
+
+function searchSongs(query) {
+    const container = document.getElementById('search-results');
+    const q = query.trim().toLowerCase();
+
+    if (!q) {
+        container.innerHTML = '<p class="search-empty">Escribe para buscar canciones</p>';
+        return;
+    }
+
+    const results = allSongs.filter(s => s.toLowerCase().includes(q));
+
+    if (results.length === 0) {
+        container.innerHTML = '<p class="search-empty">No se encontraron canciones</p>';
+        return;
+    }
+
+    container.innerHTML = results.map((song, i) => songRow(song, allSongs.indexOf(song) + 1)).join('');
+}
+
 async function playNext(songName, btn) {
     btn.disabled = true;
     btn.textContent = '...';
     try {
-        const res = await fetch(`/api/play-next/${encodeURIComponent(songName)}`, {
-            method: 'POST'
-        });
+        const res = await fetch(`/api/play-next/${encodeURIComponent(songName)}`, { method: 'POST' });
         const data = await res.json();
         if (data.ok) {
-            btn.textContent = '✓ Encolada';
-            // Refrescar el dashboard para mostrar el indicador ⏭
+            btn.textContent = '✓';
             setTimeout(updateDashboard, 500);
         } else {
             btn.textContent = 'Error';
