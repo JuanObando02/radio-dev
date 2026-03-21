@@ -59,11 +59,40 @@ h1 {
 }
 
 /* --- Playlist --- */
+.section-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #666;
+    margin: 0 0 8px 4px;
+}
+
 .playlist-card {
     background: var(--card);
     border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    margin-bottom: 24px;
+}
+
+.playlist-scroll {
+    height: 450px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+.playlist-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.playlist-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.playlist-scroll::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
 }
 
 .song {
@@ -113,6 +142,72 @@ h1 {
     text-overflow: ellipsis;
 }
 
+/* --- Buscador --- */
+.search-card {
+    background: var(--card);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.search-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.search-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+    background: #2a2a2a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+}
+
+.search-input::placeholder {
+    color: #555;
+}
+
+.search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+.search-results::-webkit-scrollbar {
+    width: 4px;
+}
+
+.search-results::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+.search-empty {
+    padding: 20px;
+    color: #555;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
 /* --- Botón siguiente --- */
 .btn-next {
     background: transparent;
@@ -136,4 +231,31 @@ h1 {
     border-color: #333;
     color: #555;
     cursor: default;
+}
+
+.now-playing-bar {
+    background: rgba(29, 185, 84, 0.1);
+    border: 1px solid rgba(29, 185, 84, 0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.now-playing-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--primary);
+}
+
+.now-playing-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
