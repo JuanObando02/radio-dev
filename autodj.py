@@ -191,9 +191,27 @@ def get_playlist():
         songs = radio_state["playlist"]
         title = radio_state["current_title"]
     with queue_lock:
-        q = list(song_queue)
-    return jsonify({"songs": songs, "now_playing": title, "queue": q})
+        python_queue = list(song_queue)
+    
+    # También consultar cola de Liquidsoap
+    liq_queue = []
+    response = liq_command("radio_queue.queue")
+    if response:
+        rids = [r.strip() for r in response.splitlines()
+                if r.strip() and r.strip() != "END"]
+        for rid in rids:
+            meta = liq_command(f"request.metadata {rid}")
+            if meta:
+                for line in meta.splitlines():
+                    if line.startswith("filename="):
+                        path = line.split("=", 1)[1].strip()
+                        liq_queue.append(os.path.basename(path))
+                        break
 
+    # Combinar: primero las de Liquidsoap, luego las pendientes en Python
+    combined_queue = liq_queue + [s for s in python_queue if s not in liq_queue]
+
+    return jsonify({"songs": songs, "now_playing": title, "queue": combined_queue})
 @app.route('/api/now-playing')
 def now_playing_proxy():
     try:
