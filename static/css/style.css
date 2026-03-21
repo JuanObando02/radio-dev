@@ -57,7 +57,7 @@ h1 {
     color: #666;
 }
 
-css.stats-bar {
+.stats-bar {
     display: flex;
     gap: 12px;
     margin-bottom: 20px;

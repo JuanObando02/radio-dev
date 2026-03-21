@@ -7,10 +7,6 @@ async function updateDashboard() {
         const data = await playlistRes.json();
         const stats = await statsRes.json();
 
-        if (!data.songs || data.songs.length === 0) {
-            container.innerHTML = '<p style="padding: 20px;">⏱ Calculando playlist...</p>';
-            return;
-        }
         // --- Oyentes ---
         const source = stats?.icestats?.source;
         const listeners = source?.listeners ?? '—';
@@ -25,8 +21,13 @@ async function updateDashboard() {
 
         // --- Playlist ---
         const container = document.getElementById('playlist-content');
-        const nowPlaying = data.now_playing;
 
+        if (!data.songs || data.songs.length === 0) {
+            container.innerHTML = '<p style="padding: 20px;">⏱ Calculando playlist...</p>';
+            return;
+        }
+
+        const nowPlaying = data.now_playing;
         container.innerHTML = data.songs.map((song, i) => {
             const isActive = (song === nowPlaying) ? 'active' : '';
             return `
