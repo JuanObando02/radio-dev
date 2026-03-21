@@ -40,7 +40,7 @@ services:
       - ICECAST_PORT=8000
       - LIQUIDSOAP_HOST=liquidsoap
       - LIQUIDSOAP_PORT=1234
-      - STREAM_URL=https://dev-stream.juanobando.dev/radio.mp3
+      - STREAM_URL=${STREAM_URL}
     volumes:
       - /home/ubuntu/musica:/app/musica
     depends_on:
