@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile.liquidsoap
     container_name: ${CONTAINER_NAME_LIQ:-radio_liquidsoap}
     volumes:
-      - /home/ubuntu/musica:/app/musica
+      - ${MUSIC_PATH:-./musica}:/app/musica
     environment:
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8000
@@ -47,8 +47,8 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
     volumes:
-      - /home/ubuntu/musica:/app/musica
-      - /home/ubuntu/cookies.txt:/app/cookies.txt
+      - ${MUSIC_PATH:-./musica}:/app/musica
+      - ${COOKIES_PATH:-./cookies.txt}:/app/cookies.txt
     depends_on:
       - icecast
       - liquidsoap

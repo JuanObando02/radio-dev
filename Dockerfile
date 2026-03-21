@@ -13,6 +13,7 @@ RUN pip install flask requests pyjwt
 
 WORKDIR /app
 
+COPY core/ ./core/
 COPY autodj.py .
 COPY templates/ ./templates/
 COPY static/ ./static/
