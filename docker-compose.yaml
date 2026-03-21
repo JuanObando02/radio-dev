@@ -41,7 +41,9 @@ services:
       - LIQUIDSOAP_HOST=liquidsoap
       - LIQUIDSOAP_PORT=1234
       - STREAM_URL=${STREAM_URL}
-      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - DASHBOARD_URL=${DASHBOARD_URL}
     volumes:
       - /home/ubuntu/musica:/app/musica
     depends_on:
