@@ -12,6 +12,7 @@ ICECAST_HOST = os.environ.get("ICECAST_HOST", "icecast")
 ICECAST_PORT = os.environ.get("ICECAST_PORT", "8000")
 LIQUIDSOAP_HOST = os.environ.get("LIQUIDSOAP_HOST", "liquidsoap")
 LIQUIDSOAP_PORT = int(os.environ.get("LIQUIDSOAP_PORT", "1234"))
+STREAM_URL = os.environ.get("STREAM_URL", "http://localhost:8000/radio.mp3")
 
 # --- ESTADO DE LA RADIO ---
 radio_state = {
@@ -80,7 +81,7 @@ app = Flask(__name__,
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', stream_url=STREAM_URL)
 
 @app.route('/api/playlist')
 def get_playlist():
