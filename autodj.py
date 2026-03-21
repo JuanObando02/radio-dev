@@ -94,10 +94,10 @@ def download_song(url, title, message_id=None):
         "yt-dlp", "-x",
         "--audio-format", "mp3",
         "--audio-quality", "0",
+        "--js-runtimes", "deno",
         "-o", f"{MUSIC_DIR}/%(title)s.%(ext)s",
         url
     ], capture_output=True, text=True)
-
     if result.returncode == 0:
         print(f"✅ Descarga exitosa: {title}", flush=True)
         if message_id:
