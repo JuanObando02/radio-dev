@@ -13,11 +13,14 @@ fallback_playlist = playlist(
   "/app/musica"
 )
 
-# --- Fuente final ---
-radio = fallback(
-  id="radio",
-  track_sensitive=true,
-  [radio_queue, fallback_playlist]
+# --- Fuente final: cola primero, si no hay nada el fallback ---
+# mksafe garantiza que siempre haya audio (infallible)
+radio = mksafe(
+  fallback(
+    id="radio",
+    track_sensitive=true,
+    [radio_queue, fallback_playlist]
+  )
 )
 
 # --- Salida hacia Icecast ---
