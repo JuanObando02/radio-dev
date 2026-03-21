@@ -1,7 +1,4 @@
 FROM python:3.10-slim
-FROM savonet/liquidsoap:v2.2.5
-
-COPY radio.liq /app/radio.liq
 
 RUN pip install flask requests
 
@@ -12,4 +9,3 @@ COPY templates/ ./templates/
 COPY static/ ./static/
 
 CMD ["python", "-u", "autodj.py"]
-
