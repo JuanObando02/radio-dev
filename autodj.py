@@ -75,7 +75,6 @@ def telegram_edit_message(message_id, text):
         print(f"Error editando mensaje: {e}", flush=True)
 
 def register_telegram_webhook():
-    """Registra el webhook de Telegram apuntando a Flask."""
     webhook_url = f"{DASHBOARD_URL}/api/telegram-webhook"
     try:
         res = requests.post(f"{TELEGRAM_API}/setWebhook", json={
@@ -88,7 +87,6 @@ def register_telegram_webhook():
         print(f"Error registrando webhook: {e}", flush=True)
 
 def download_song(url, title, message_id=None):
-    """Descarga una canción con yt-dlp."""
     print(f"⬇ Descargando: {url}", flush=True)
     result = subprocess.run([
         "yt-dlp", "-x",
@@ -102,17 +100,12 @@ def download_song(url, title, message_id=None):
         print(f"✅ Descarga exitosa: {title}", flush=True)
         if message_id:
             telegram_edit_message(message_id,
-                f"✅ *Descarga completada*\n\n"
-                f"🎵 {title}\n\n"
-                f"Ya está disponible en la radio."
-            )
+                f"✅ *Descarga completada*\n\n🎵 {title}\n\nYa está disponible en la radio.")
     else:
         print(f"❌ Error descargando: {result.stderr}", flush=True)
         if message_id:
             telegram_edit_message(message_id,
-                f"❌ *Error en la descarga*\n\n"
-                f"🎵 {title}"
-            )
+                f"❌ *Error en la descarga*\n\n🎵 {title}")
 
 # --- LIQUIDSOAP ---
 def liq_command(cmd):
@@ -142,13 +135,11 @@ def push_to_liquidsoap(song_name):
     print(f"→ Liquidsoap: {song_name} ({response})", flush=True)
     return response is not None
 
-# --- GESTOR DE COLA ---
 def queue_manager():
     print("🎵 Gestor de cola iniciado", flush=True)
     while True:
         with queue_lock:
             next_song = song_queue[0] if song_queue else None
-
         if next_song:
             liq_size = get_liq_queue_size()
             if liq_size == 0:
@@ -156,10 +147,8 @@ def queue_manager():
                     if song_queue:
                         song = song_queue.pop(0)
                 push_to_liquidsoap(song)
-
         time.sleep(2)
 
-# --- TRACKER ---
 def get_current_title():
     try:
         url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
@@ -189,9 +178,7 @@ def scan_playlist():
         time.sleep(30)
 
 # --- FLASK ---
-app = Flask(__name__,
-            static_folder='static',
-            template_folder='templates')
+app = Flask(__name__, static_folder='static', template_folder='templates')
 
 @app.route('/')
 def index():
@@ -204,11 +191,7 @@ def get_playlist():
         title = radio_state["current_title"]
     with queue_lock:
         q = list(song_queue)
-    return jsonify({
-        "songs": songs,
-        "now_playing": title,
-        "queue": q,
-    })
+    return jsonify({"songs": songs, "now_playing": title, "queue": q})
 
 @app.route('/api/now-playing')
 def now_playing_proxy():
@@ -223,18 +206,46 @@ def now_playing_proxy():
 def play_next(song_name):
     with state_lock:
         playlist = radio_state["playlist"]
-
     if song_name not in playlist:
         return jsonify({"error": "Canción no encontrada"}), 404
-
     with queue_lock:
         if song_name in song_queue:
             return jsonify({"error": "La canción ya está en la cola"}), 400
         song_queue.append(song_name)
         position = len(song_queue)
-
     print(f"📋 Encolada en posición {position}: {song_name}", flush=True)
     return jsonify({"ok": True, "queued": song_name, "position": position})
+
+@app.route('/api/search-youtube', methods=['POST'])
+def search_youtube():
+    try:
+        data = request.get_json()
+        query = data.get('query')
+        if not query:
+            return jsonify({"error": "Query requerida"}), 400
+
+        result = subprocess.run([
+            "yt-dlp", f"ytsearch5:{query}",
+            "--dump-json", "--flat-playlist", "--no-download"
+        ], capture_output=True, text=True, timeout=15)
+
+        videos = []
+        for line in result.stdout.strip().splitlines():
+            try:
+                v = json.loads(line)
+                dur = int(v.get("duration") or 0)
+                videos.append({
+                    "title": v.get("title"),
+                    "channel": v.get("channel") or v.get("uploader"),
+                    "duration": f"{dur // 60}:{str(dur % 60).zfill(2)}",
+                    "url": f"https://youtube.com/watch?v={v.get('id')}",
+                    "thumbnail": v.get("thumbnail"),
+                })
+            except:
+                continue
+        return jsonify({"results": videos})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/request-download', methods=['POST'])
 def request_download():
@@ -266,10 +277,8 @@ def request_download():
         if message_id:
             with pending_lock:
                 pending_downloads[message_id] = {
-                    "url": url,
-                    "title": title,
-                    "channel": channel,
-                    "duration": duration
+                    "url": url, "title": title,
+                    "channel": channel, "duration": duration
                 }
             return jsonify({"ok": True})
         else:
@@ -283,9 +292,7 @@ def request_download():
 
 @app.route('/api/telegram-webhook', methods=['POST'])
 def telegram_webhook():
-    """Recibe callbacks de Telegram cuando el usuario presiona los botones."""
     update = request.get_json()
-
     callback = update.get("callback_query")
     if not callback:
         return jsonify({"ok": True})
@@ -304,10 +311,7 @@ def telegram_webhook():
     if action == "approve":
         telegram_answer_callback(callback_id, "✅ Aprobado, descargando...")
         telegram_edit_message(message_id,
-            f"✅ *Descarga aprobada*\n\n"
-            f"🎵 {download_info['title']}\n"
-            f"Descargando..."
-        )
+            f"✅ *Descarga aprobada*\n\n🎵 {download_info['title']}\nDescargando...")
         threading.Thread(
             target=download_song,
             args=(download_info["url"], download_info["title"], message_id),
@@ -316,9 +320,7 @@ def telegram_webhook():
     else:
         telegram_answer_callback(callback_id, "❌ Rechazado")
         telegram_edit_message(message_id,
-            f"❌ *Descarga rechazada*\n\n"
-            f"🎵 {download_info['title']}"
-        )
+            f"❌ *Descarga rechazada*\n\n🎵 {download_info['title']}")
 
     return jsonify({"ok": True})
 
@@ -343,30 +345,8 @@ if __name__ == "__main__":
     threading.Thread(target=scan_playlist, daemon=True).start()
     threading.Thread(target=queue_manager, daemon=True).start()
 
-    # Registrar webhook de Telegram
     time.sleep(3)
     register_telegram_webhook()
-
-    print("📻 Radio lista.", flush=True)
-
-    while True:
-        time.sleep(60)
-    print("Esperando a que los servicios estén listos...", flush=True)
-    time.sleep(10)
-
-    songs = sorted([
-        f for f in os.listdir(MUSIC_DIR)
-        if f.lower().endswith(('.mp3', '.m4a', '.wav'))
-    ])
-    with state_lock:
-        radio_state["playlist"] = songs
-
-    print(f"✅ {len(songs)} canciones encontradas", flush=True)
-
-    threading.Thread(target=start_web, daemon=True).start()
-    threading.Thread(target=track_current_song, daemon=True).start()
-    threading.Thread(target=scan_playlist, daemon=True).start()
-    threading.Thread(target=queue_manager, daemon=True).start()
 
     print("📻 Radio lista.", flush=True)
 
