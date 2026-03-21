@@ -1,5 +1,5 @@
 import os
-import subprocess
+import socket
 import time
 import random
 import threading
@@ -8,25 +8,70 @@ from flask import Flask, jsonify, render_template
 
 # --- CONFIGURACIÓN ---
 MUSIC_DIR = "/app/musica"
-ICECAST_HOST = os.environ.get("ICECAST_HOST", "icecast_dev")
+ICECAST_HOST = os.environ.get("ICECAST_HOST", "icecast")
 ICECAST_PORT = os.environ.get("ICECAST_PORT", "8000")
-ICECAST_USER = os.environ.get("ICECAST_USER", "source")
-ICECAST_PASS = os.environ.get("ICECAST_PASS", "supersecreto")
-ICECAST_MOUNT = os.environ.get("ICECAST_MOUNT", "/radio.mp3")
-
-ICECAST_URL = f"icecast://{ICECAST_USER}:{ICECAST_PASS}@{ICECAST_HOST}:{ICECAST_PORT}{ICECAST_MOUNT}"
-PLAYLIST_PATH = "/tmp/playlist.txt"
+LIQUIDSOAP_HOST = os.environ.get("LIQUIDSOAP_HOST", "liquidsoap")
+LIQUIDSOAP_PORT = int(os.environ.get("LIQUIDSOAP_PORT", "1234"))
 
 # --- ESTADO DE LA RADIO ---
 radio_state = {
     "current_song": "Iniciando...",
     "playlist": [],
-    "song_index": 0,        # índice de la canción actual en la playlist
-    "song_start": 0.0,      # timestamp de cuando empezó la canción actual
+    "next_song": None,
 }
-
-# Lock para acceso seguro al estado desde múltiples hilos
 state_lock = threading.Lock()
+
+# --- COMUNICACIÓN CON LIQUIDSOAP VÍA TELNET ---
+def liq_command(cmd):
+    """Envía un comando a Liquidsoap y retorna la respuesta."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(5)
+            s.connect((LIQUIDSOAP_HOST, LIQUIDSOAP_PORT))
+            s.sendall((cmd + "\n").encode())
+            time.sleep(0.3)
+            response = s.recv(4096).decode().strip()
+            return response
+    except Exception as e:
+        print(f"Error telnet Liquidsoap: {e}", flush=True)
+        return None
+
+def enqueue_song(song_name):
+    """Encola una canción en Liquidsoap."""
+    song_path = os.path.join(MUSIC_DIR, song_name)
+    response = liq_command(f'radio_queue.push {song_path}')
+    print(f"Encolada: {song_name} → {response}", flush=True)
+    return response
+
+def get_current_song_liq():
+    """Consulta a Liquidsoap qué canción está sonando."""
+    response = liq_command("radio.metadata")
+    if response:
+        for line in response.splitlines():
+            if line.startswith("filename="):
+                path = line.split("=", 1)[1].strip()
+                return os.path.basename(path)
+    return None
+
+# --- TRACKER: actualiza current_song cada 3 segundos ---
+def track_current_song():
+    while True:
+        song = get_current_song_liq()
+        if song:
+            with state_lock:
+                radio_state["current_song"] = song
+        time.sleep(3)
+
+# --- SCANNER: mantiene la playlist actualizada ---
+def scan_playlist():
+    while True:
+        songs = sorted([
+            f for f in os.listdir(MUSIC_DIR)
+            if f.lower().endswith(('.mp3', '.m4a', '.wav'))
+        ])
+        with state_lock:
+            radio_state["playlist"] = songs
+        time.sleep(30)
 
 # --- DASHBOARD WEB (FLASK) ---
 app = Flask(__name__,
@@ -42,141 +87,66 @@ def get_playlist():
     with state_lock:
         return jsonify({
             "songs": radio_state["playlist"],
-            "now_playing": radio_state["current_song"]
+            "now_playing": radio_state["current_song"],
+            "next_song": radio_state["next_song"],
         })
 
 @app.route('/api/now-playing')
 def now_playing_proxy():
-    """Proxy para consultar estadísticas de oyentes en Icecast"""
+    """Proxy para estadísticas de Icecast."""
     try:
-        url_icecast = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
-        response = requests.get(url_icecast, timeout=2)
+        url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
+        response = requests.get(url, timeout=2)
         return jsonify(response.json())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/play-next/<path:song_name>', methods=['POST'])
+def play_next(song_name):
+    """Encola una canción para que suene de siguiente."""
+    with state_lock:
+        playlist = radio_state["playlist"]
+
+    if song_name not in playlist:
+        return jsonify({"error": "Canción no encontrada"}), 404
+
+    result = enqueue_song(song_name)
+    if result is not None:
+        with state_lock:
+            radio_state["next_song"] = song_name
+        return jsonify({"ok": True, "queued": song_name})
+    else:
+        return jsonify({"error": "No se pudo encolar"}), 500
+
 def start_web():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
-
-# --- TRACKER: calcula qué canción está sonando según el tiempo ---
-def track_current_song(durations):
-    """
-    Recibe una lista de duraciones (en segundos) de cada canción en la playlist.
-    Cada 2 segundos calcula qué canción debería estar sonando según el tiempo
-    transcurrido desde que empezó el stream y actualiza radio_state.
-    """
-    with state_lock:
-        start_time = radio_state["song_start"]
-        playlist = radio_state["playlist"][:]
-
-    while True:
-        elapsed = time.time() - start_time
-        accumulated = 0.0
-
-        for i, duration in enumerate(durations):
-            accumulated += duration
-            if elapsed < accumulated:
-                with state_lock:
-                    radio_state["current_song"] = playlist[i]
-                    radio_state["song_index"] = i
-                break
-        else:
-            # Si ya terminó toda la playlist, marcamos la última
-            with state_lock:
-                radio_state["current_song"] = playlist[-1]
-
-        time.sleep(2)
-
-
-# --- UTILIDAD: obtener duración de un archivo de audio con ffprobe ---
-def get_duration(filepath):
-    try:
-        result = subprocess.run(
-            [
-                "ffprobe", "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                filepath
-            ],
-            capture_output=True, text=True, timeout=10
-        )
-        return float(result.stdout.strip())
-    except Exception:
-        return 0.0
-
-
-# --- MOTOR DE LA RADIO ---
-def run_radio():
-    print("--- Iniciando Motor de Radio (stream continuo) ---", flush=True)
-
-    while True:
-        # 1. Escanear canciones
-        all_songs = [
-            f for f in os.listdir(MUSIC_DIR)
-            if f.lower().endswith(('.mp3', '.m4a', '.wav'))
-        ]
-        if not all_songs:
-            print("No se encontraron canciones en /app/musica. Reintentando en 10s...", flush=True)
-            time.sleep(10)
-            continue
-
-        random.shuffle(all_songs)
-
-        # 2. Obtener duraciones de todas las canciones
-        print("⏱ Calculando duraciones...", flush=True)
-        durations = []
-        for song in all_songs:
-            path = os.path.join(MUSIC_DIR, song)
-            d = get_duration(path)
-            durations.append(d)
-            print(f"  {song}: {d:.1f}s", flush=True)
-
-        # 3. Escribir playlist para FFmpeg
-        with open(PLAYLIST_PATH, "w") as f:
-            for song in all_songs:
-                song_path = os.path.join(MUSIC_DIR, song)
-                f.write(f"file '{song_path}'\n")
-
-        # 4. Actualizar estado global
-        with state_lock:
-            radio_state["playlist"] = all_songs
-            radio_state["current_song"] = all_songs[0]
-            radio_state["song_index"] = 0
-            radio_state["song_start"] = time.time()
-
-        # 5. Lanzar tracker en hilo separado
-        tracker = threading.Thread(
-            target=track_current_song,
-            args=(durations,),
-            daemon=True
-        )
-        tracker.start()
-
-        # 6. Lanzar FFmpeg con la playlist completa (UNA SOLA CONEXIÓN)
-        print("▶ Iniciando stream continuo...", flush=True)
-        command = [
-            "ffmpeg", "-re",
-            "-f", "concat", "-safe", "0", "-i", PLAYLIST_PATH,
-            "-vn",
-            "-c:a", "libmp3lame", "-b:a", "128k",
-            "-content_type", "audio/mpeg",
-            "-f", "mp3", ICECAST_URL
-        ]
-        subprocess.run(command)
-
-        # Cuando FFmpeg termina (toda la playlist), vuelve a mezclar y repetir
-        print("🔁 Playlist terminada, reiniciando...", flush=True)
-        time.sleep(2)
-
-
 if __name__ == "__main__":
-    # Esperar a que Icecast esté listo
-    time.sleep(7)
+    # Esperar a que Liquidsoap e Icecast estén listos
+    print("Esperando a que los servicios estén listos...", flush=True)
+    time.sleep(10)
+
+    # Escanear canciones inicial
+    songs = sorted([
+        f for f in os.listdir(MUSIC_DIR)
+        if f.lower().endswith(('.mp3', '.m4a', '.wav'))
+    ])
+    with state_lock:
+        radio_state["playlist"] = songs
+
+    print(f"✅ {len(songs)} canciones encontradas", flush=True)
 
     # Hilo 1: Servidor Web Flask
-    web_thread = threading.Thread(target=start_web, daemon=True)
-    web_thread.start()
+    threading.Thread(target=start_web, daemon=True).start()
 
-    # Hilo principal: Motor de Radio
-    run_radio()
+    # Hilo 2: Tracker de canción actual
+    threading.Thread(target=track_current_song, daemon=True).start()
+
+    # Hilo 3: Scanner de playlist
+    threading.Thread(target=scan_playlist, daemon=True).start()
+
+    print("📻 Radio lista.", flush=True)
+
+    # Mantener el proceso vivo
+    while True:
+        time.sleep(60)
