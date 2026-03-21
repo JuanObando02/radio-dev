@@ -17,8 +17,9 @@ STREAM_URL = os.environ.get("STREAM_URL", "http://localhost:8000/radio.mp3")
 # --- ESTADO DE LA RADIO ---
 radio_state = {
     "current_song": "Iniciando...",
+    "current_title": "Iniciando...",   # ← título limpio de Icecast
     "playlist": [],
-    "queue": [],  # cola real de Liquidsoap
+    "queue": [],
 }
 state_lock = threading.Lock()
 
@@ -66,23 +67,25 @@ def enqueue_song(song_name):
     print(f"Encolada: {song_name} → {response}", flush=True)
     return response
 
-def get_current_song_liq():
-    """Consulta a Liquidsoap qué canción está sonando."""
-    response = liq_command("radio.metadata")
-    if response:
-        for line in response.splitlines():
-            if line.startswith("filename="):
-                path = line.split("=", 1)[1].strip()
-                return os.path.basename(path)
+def get_current_song_icecast():
+    """Lee el título actual desde Icecast."""
+    try:
+        url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
+        response = requests.get(url, timeout=2)
+        data = response.json()
+        source = data.get("icestats", {}).get("source", {})
+        return source.get("title", None)
+    except Exception as e:
+        print(f"Error consultando Icecast: {e}", flush=True)
     return None
 
 # --- TRACKER: actualiza current_song y queue cada 3 segundos ---
 def track_current_song():
     while True:
-        song = get_current_song_liq()
-        if song:
+        title = get_current_song_icecast()
+        if title:
             with state_lock:
-                radio_state["current_song"] = song
+                radio_state["current_title"] = title
 
         queue = get_queue_liq()
         with state_lock:
@@ -115,7 +118,7 @@ def get_playlist():
     with state_lock:
         return jsonify({
             "songs": radio_state["playlist"],
-            "now_playing": radio_state["current_song"],
+            "now_playing": radio_state["current_title"],  # ← cambia esto
             "queue": radio_state["queue"],
         })
 

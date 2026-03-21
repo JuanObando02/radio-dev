@@ -18,6 +18,7 @@ async function updateDashboard() {
         document.getElementById('stream-start').textContent = source?.stream_start
             ? new Date(source.stream_start).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
             : '—';
+        document.getElementById('now-playing-title').textContent = data.now_playing || '—';
 
         if (!data.songs || data.songs.length === 0) {
             document.getElementById('playlist-content').innerHTML =
