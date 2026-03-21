@@ -236,76 +236,50 @@ def play_next(song_name):
     print(f"📋 Encolada en posición {position}: {song_name}", flush=True)
     return jsonify({"ok": True, "queued": song_name, "position": position})
 
-@app.route('/api/search-youtube', methods=['POST'])
-def search_youtube():
-    data = request.get_json()
-    query = data.get('query')
-    if not query:
-        return jsonify({"error": "Query requerida"}), 400
-
-    try:
-        result = subprocess.run([
-            "yt-dlp", f"ytsearch5:{query}",
-            "--dump-json", "--flat-playlist", "--no-download"
-        ], capture_output=True, text=True, timeout=15)
-
-        videos = []
-        for line in result.stdout.strip().splitlines():
-            try:
-                v = json.loads(line)
-                dur = int(v.get("duration") or 0)
-                videos.append({
-                    "title": v.get("title"),
-                    "channel": v.get("channel") or v.get("uploader"),
-                    "duration": f"{dur // 60}:{str(dur % 60).zfill(2)}",
-                    "url": f"https://youtube.com/watch?v={v.get('id')}",
-                    "thumbnail": v.get("thumbnail"),
-                })
-            except:
-                continue
-
-        return jsonify({"results": videos})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/api/request-download', methods=['POST'])
 def request_download():
-    data = request.get_json()
-    url = data.get('url')
-    title = data.get('title', 'Sin título')
-    channel = data.get('channel', '')
-    duration = data.get('duration', '')
+    try:
+        data = request.get_json()
+        url = data.get('url')
+        title = data.get('title', 'Sin título')
+        channel = data.get('channel', '')
+        duration = data.get('duration', '')
 
-    if not url:
-        return jsonify({"error": "URL requerida"}), 400
+        if not url:
+            return jsonify({"error": "URL requerida"}), 400
 
-    # Enviar mensaje a Telegram con botones
-    message_id = telegram_send(
-        f"🎵 *Nueva solicitud de descarga*\n\n"
-        f"Título: {title}\n"
-        f"Canal: {channel}\n"
-        f"Duración: {duration}\n"
-        f"URL: {url}\n\n"
-        f"¿Aprobar descarga?",
-        reply_markup={
-            "inline_keyboard": [[
-                {"text": "✅ Aprobar", "callback_data": f"approve"},
-                {"text": "❌ Rechazar", "callback_data": "reject"}
-            ]]
-        }
-    )
-
-    if message_id:
-        with pending_lock:
-            pending_downloads[message_id] = {
-                "url": url,
-                "title": title,
-                "channel": channel,
-                "duration": duration
+        message_id = telegram_send(
+            f"🎵 *Nueva solicitud de descarga*\n\n"
+            f"Título: {title}\n"
+            f"Canal: {channel}\n"
+            f"Duración: {duration}\n"
+            f"URL: {url}\n\n"
+            f"¿Aprobar descarga?",
+            reply_markup={
+                "inline_keyboard": [[
+                    {"text": "✅ Aprobar", "callback_data": "approve"},
+                    {"text": "❌ Rechazar", "callback_data": "reject"}
+                ]]
             }
-        return jsonify({"ok": True})
-    else:
-        return jsonify({"error": "No se pudo enviar mensaje a Telegram"}), 500
+        )
+
+        if message_id:
+            with pending_lock:
+                pending_downloads[message_id] = {
+                    "url": url,
+                    "title": title,
+                    "channel": channel,
+                    "duration": duration
+                }
+            return jsonify({"ok": True})
+        else:
+            return jsonify({"error": "No se pudo enviar mensaje a Telegram"}), 500
+
+    except Exception as e:
+        print(f"❌ Error en request_download: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/telegram-webhook', methods=['POST'])
 def telegram_webhook():
