@@ -27,36 +27,7 @@ h1 {
     padding-bottom: 10px;
 }
 
-.playlist-card {
-    background: var(--card);
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.song {
-    padding: 15px 20px;
-    border-bottom: 1px solid #2a2a2a;
-    display: flex;
-    align-items: center;
-    transition: background 0.2s;
-}
-
-.song:hover {
-    background: #282828;
-}
-
-.song.active {
-    background: rgba(29, 185, 84, 0.15);
-    color: var(--primary);
-    font-weight: 600;
-}
-
-.song-num {
-    width: 40px;
-    color: #666;
-}
-
+/* --- Stats bar --- */
 .stats-bar {
     display: flex;
     gap: 12px;
@@ -85,4 +56,84 @@ h1 {
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--primary);
+}
+
+/* --- Playlist --- */
+.playlist-card {
+    background: var(--card);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.song {
+    padding: 12px 20px;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.song:hover {
+    background: #282828;
+}
+
+.song.active {
+    background: rgba(29, 185, 84, 0.15);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.song.next {
+    background: rgba(255, 200, 0, 0.08);
+}
+
+.song-num {
+    width: 32px;
+    color: #666;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.song.active .song-num {
+    color: var(--primary);
+}
+
+.song.next .song-num {
+    color: #ffc800;
+}
+
+.song-name {
+    flex: 1;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Botón siguiente --- */
+.btn-next {
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-next:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-next:disabled {
+    border-color: #333;
+    color: #555;
+    cursor: default;
 }
