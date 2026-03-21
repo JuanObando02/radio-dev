@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin | Radio</title>
+    <style>
+        :root {
+            --primary: #1DB954;
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #ffffff;
+            --danger: #e74c3c;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container { width: 100%; max-width: 700px; }
+        h1 { color: var(--primary); font-size: 1.8rem; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 24px; }
+        h2 { font-size: 1rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+
+        /* Login */
+        .login-card {
+            background: var(--card);
+            border-radius: 15px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .login-card input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            padding: 10px 14px;
+            outline: none;
+            margin-bottom: 12px;
+        }
+        .login-card input:focus { border-color: var(--primary); }
+        .btn {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-danger {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .error { color: var(--danger); font-size: 0.85rem; margin-top: 8px; }
+
+        /* Stats */
+        .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; }
+        .stat {
+            flex: 1; background: var(--card); border-radius: 12px;
+            padding: 16px; display: flex; flex-direction: column;
+            align-items: center; gap: 6px;
+        }
+        .stat-label { font-size: 0.75rem; color: #888; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+
+        /* Upload */
+        .upload-card {
+            background: var(--card); border-radius: 15px;
+            padding: 20px; margin-bottom: 24px;
+        }
+        .upload-area {
+            border: 2px dashed #333; border-radius: 10px;
+            padding: 30px; text-align: center; cursor: pointer;
+            transition: border-color 0.2s; margin-bottom: 12px;
+        }
+        .upload-area:hover, .upload-area.drag { border-color: var(--primary); }
+        .upload-area p { color: #666; font-size: 0.9rem; margin-top: 8px; }
+        #upload-input { display: none; }
+        .progress { background: #2a2a2a; border-radius: 4px; height: 6px; margin-top: 8px; display: none; }
+        .progress-bar { background: var(--primary); height: 100%; border-radius: 4px; width: 0%; transition: width 0.3s; }
+        .upload-status { font-size: 0.85rem; color: #888; margin-top: 8px; }
+
+        /* Songs */
+        .songs-card { background: var(--card); border-radius: 15px; overflow: hidden; }
+        .songs-scroll { max-height: 500px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+        .song-row {
+            padding: 12px 20px; border-bottom: 1px solid #2a2a2a;
+            display: flex; align-items: center; gap: 12px;
+            transition: background 0.2s;
+        }
+        .song-row:hover { background: #282828; }
+        .song-row-name { flex: 1; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .search-bar {
+            padding: 12px 20px; border-bottom: 1px solid #2a2a2a;
+        }
+        .search-bar input {
+            width: 100%; background: #2a2a2a; border: 1px solid #333;
+            border-radius: 8px; color: var(--text); font-size: 0.9rem;
+            padding: 8px 14px; outline: none;
+        }
+        .search-bar input:focus { border-color: var(--primary); }
+        .logout { float: right; font-size: 0.8rem; color: #666; cursor: pointer; text-decoration: underline; }
+        .logout:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⚙️ Panel de Administración <span class="logout" onclick="logout()">Cerrar sesión</span></h1>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat">
+            <span class="stat-label">🎵 Canciones</span>
+            <span class="stat-value" id="total-songs">—</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">💾 Espacio usado</span>
+            <span class="stat-value" id="disk-used">—</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">📀 Espacio libre</span>
+            <span class="stat-value" id="disk-free">—</span>
+        </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="upload-card">
+        <h2>Subir canciones</h2>
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('upload-input').click()">
+            <div style="font-size: 2rem;">🎵</div>
+            <p>Haz clic o arrastra archivos MP3, M4A o WAV</p>
+        </div>
+        <input type="file" id="upload-input" multiple accept=".mp3,.m4a,.wav">
+        <div class="progress" id="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="upload-status" id="upload-status"></div>
+    </div>
+
+    <!-- Songs list -->
+    <h2>Todas las canciones</h2>
+    <div class="songs-card">
+        <div class="search-bar">
+            <input type="text" placeholder="Filtrar canciones..." oninput="filterSongs(this.value)" id="filter-input">
+        </div>
+        <div class="songs-scroll" id="songs-list">
+            <div class="song-row"><span class="song-row-name" style="color:#666">Cargando...</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allSongs = [];
+
+async function loadData() {
+    try {
+        const res = await fetch('/admin/api/songs');
+        const data = await res.json();
+        allSongs = data.songs;
+        document.getElementById('total-songs').textContent = data.total;
+        document.getElementById('disk-used').textContent = data.disk_used;
+        document.getElementById('disk-free').textContent = data.disk_free;
+        renderSongs(allSongs);
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function renderSongs(songs) {
+    const container = document.getElementById('songs-list');
+    if (!songs.length) {
+        container.innerHTML = '<div class="song-row"><span class="song-row-name" style="color:#666">No hay canciones</span></div>';
+        return;
+    }
+    container.innerHTML = songs.map(song => `
+        <div class="song-row" id="row-${btoa(encodeURIComponent(song))}">
+            <span class="song-row-name" title="${song}">${song}</span>
+            <button class="btn-danger" onclick="deleteSong('${song.replace(/'/g, "\\'")}', this)">Eliminar</button>
+        </div>
+    `).join('');
+}
+
+function filterSongs(query) {
+    const q = query.toLowerCase();
+    const filtered = q ? allSongs.filter(s => s.toLowerCase().includes(q)) : allSongs;
+    renderSongs(filtered);
+}
+
+async function deleteSong(name, btn) {
+    if (!confirm(`¿Eliminar "${name}"?`)) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const res = await fetch(`/admin/api/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            allSongs = allSongs.filter(s => s !== name);
+            filterSongs(document.getElementById('filter-input').value);
+            document.getElementById('total-songs').textContent = allSongs.length;
+        } else {
+            btn.textContent = 'Error';
+            btn.disabled = false;
+        }
+    } catch(e) {
+        btn.textContent = 'Error';
+        btn.disabled = false;
+    }
+}
+
+// Upload
+const uploadArea = document.getElementById('upload-area');
+const uploadInput = document.getElementById('upload-input');
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag'));
+uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag');
+    uploadFiles(e.dataTransfer.files);
+});
+uploadInput.addEventListener('change', () => uploadFiles(uploadInput.files));
+
+async function uploadFiles(files) {
+    if (!files.length) return;
+    const wrap = document.getElementById('progress-bar-wrap');
+    const bar = document.getElementById('progress-bar');
+    const status = document.getElementById('upload-status');
+    wrap.style.display = 'block';
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        status.textContent = `Subiendo ${i+1}/${files.length}: ${file.name}`;
+        bar.style.width = `${((i) / files.length) * 100}%`;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/admin/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!data.ok) status.textContent = `Error subiendo ${file.name}`;
+        } catch(e) {
+            status.textContent = `Error: ${e}`;
+        }
+    }
+
+    bar.style.width = '100%';
+    status.textContent = `✅ ${files.length} archivo(s) subido(s)`;
+    setTimeout(() => { wrap.style.display = 'none'; bar.style.width = '0%'; }, 2000);
+    loadData();
+}
+
+async function logout() {
+    await fetch('/admin/logout', { method: 'POST' });
+    window.location.href = '/admin';
+}
+
+loadData();
+setInterval(loadData, 30000);
+</script>
+</body>
+</html>

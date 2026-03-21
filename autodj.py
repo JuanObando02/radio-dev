@@ -6,6 +6,7 @@ import subprocess
 import json
 import requests
 from flask import Flask, jsonify, render_template, request
+from flask import session, redirect, send_from_directory
 
 # --- CONFIGURACIÓN ---
 MUSIC_DIR = "/app/musica"
@@ -326,6 +327,93 @@ def telegram_webhook():
 
 def start_web():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
+# --- ADMIN ---
+import shutil
+from functools import wraps
+from werkzeug.utils import secure_filename
+
+app.secret_key = os.environ.get("SECRET_KEY", "radio-secret-2024")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "radio1234")
+ALLOWED_EXTENSIONS = {'.mp3', '.m4a', '.wav'}
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('admin'):
+            return redirect('/admin/login')
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/admin')
+@admin_required
+def admin_panel():
+    return send_from_directory('templates', 'admin.html')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'GET':
+        return send_from_directory('templates', 'login.html')
+    data = request.get_json()
+    if data.get('password') == ADMIN_PASSWORD:
+        session['admin'] = True
+        return jsonify({"ok": True})
+    return jsonify({"ok": False}), 401
+
+@app.route('/admin/logout', methods=['POST'])
+def admin_logout():
+    session.pop('admin', None)
+    return jsonify({"ok": True})
+
+@app.route('/admin/api/songs')
+@admin_required
+def admin_songs():
+    songs = sorted([
+        f for f in os.listdir(MUSIC_DIR)
+        if f.lower().endswith(('.mp3', '.m4a', '.wav'))
+    ])
+    total = shutil.disk_usage(MUSIC_DIR)
+    def fmt(b):
+        gb = b / (1024**3)
+        return f"{gb:.1f}GB" if gb >= 1 else f"{b/(1024**2):.0f}MB"
+    return jsonify({
+        "songs": songs,
+        "total": len(songs),
+        "disk_used": fmt(total.used),
+        "disk_free": fmt(total.free)
+    })
+
+@app.route('/admin/api/delete', methods=['POST'])
+@admin_required
+def admin_delete():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "Nombre requerido"}), 400
+    path = os.path.join(MUSIC_DIR, name)
+    if not os.path.exists(path):
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    try:
+        os.remove(path)
+        print(f"🗑 Eliminada: {name}", flush=True)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/api/upload', methods=['POST'])
+@admin_required
+def admin_upload():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file"}), 400
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": "Formato no permitido"}), 400
+    filename = secure_filename(file.filename)
+    path = os.path.join(MUSIC_DIR, filename)
+    file.save(path)
+    print(f"⬆ Subida: {filename}", flush=True)
+    return jsonify({"ok": True})
 
 if __name__ == "__main__":
     print("Esperando a que los servicios estén listos...", flush=True)
