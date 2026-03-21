@@ -4,12 +4,15 @@ FROM python:3.10-slim
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Instalamos Flask para el Dashboard web
-RUN pip install flask
+RUN pip install flask requests
+
 
 WORKDIR /app
 
-# Copiamos nuestro script al contenedor
+# Copiamos los archivos al contenedor
 COPY autodj.py .
+COPY templates/ ./templates/
+COPY static/ ./static/
 
 # Ejecutamos el script
 CMD ["python","-u", "autodj.py"]
