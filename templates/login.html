@@ -1,57 +1,111 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Admin Login | Radio</title>
     <style>
-        :root { --primary: #1DB954; --bg: #121212; --card: #1e1e1e; --text: #ffffff; --danger: #e74c3c; }
+        :root {
+            --primary: #1DB954;
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #ffffff;
+            --danger: #e74c3c;
+        }
+
         body {
-            background: var(--bg); color: var(--text);
+            background: var(--bg);
+            color: var(--text);
             font-family: 'Inter', 'Segoe UI', sans-serif;
-            display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
         }
+
         .card {
-            background: var(--card); border-radius: 15px; padding: 40px;
-            width: 100%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: var(--card);
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
-        h1 { color: var(--primary); font-size: 1.5rem; margin-bottom: 24px; text-align: center; }
+
+        h1 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
         input {
-            width: 100%; background: #2a2a2a; border: 1px solid #333;
-            border-radius: 8px; color: var(--text); font-size: 1rem;
-            padding: 10px 14px; outline: none; margin-bottom: 12px;
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            padding: 10px 14px;
+            outline: none;
+            margin-bottom: 12px;
         }
-        input:focus { border-color: var(--primary); }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
         button {
-            width: 100%; background: var(--primary); color: #000; border: none;
-            border-radius: 8px; padding: 12px; font-size: 1rem; font-weight: 600;
-            cursor: pointer; transition: opacity 0.2s;
+            width: 100%;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
         }
-        button:hover { opacity: 0.85; }
-        .error { color: var(--danger); font-size: 0.85rem; margin-top: 8px; text-align: center; }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .error {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 8px;
+            text-align: center;
+        }
     </style>
 </head>
+
 <body>
-<div class="card">
-    <h1>⚙️ Admin Radio</h1>
-    <input type="password" id="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter') login()">
-    <button onclick="login()">Entrar</button>
-    <div class="error" id="error"></div>
-</div>
-<script>
-async function login() {
-    const password = document.getElementById('password').value;
-    const res = await fetch('/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-    });
-    const data = await res.json();
-    if (data.ok) {
-        window.location.href = '/admin';
-    } else {
-        document.getElementById('error').textContent = 'Contraseña incorrecta';
-    }
-}
-</script>
+    <div class="card">
+        <h1>⚙️ Admin Radio</h1>
+        <input type="password" id="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter') login()">
+        <button onclick="login()">Entrar</button>
+        <div class="error" id="error"></div>
+    </div>
+    <script>
+        async function login() {
+            const password = document.getElementById('password').value;
+            const res = await fetch('/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                localStorage.setItem('admin_token', data.token);
+                window.location.href = '/admin';
+            } else {
+                document.getElementById('error').textContent = 'Contraseña incorrecta';
+            }
+        }
+    </script>
 </body>
+
 </html>

@@ -330,23 +330,50 @@ def start_web():
 
 # --- ADMIN ---
 import shutil
+import jwt
+import datetime
 from functools import wraps
 from werkzeug.utils import secure_filename
 
-app.secret_key = os.environ.get("SECRET_KEY", "radio-secret-2024")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "radio1234")
+SECRET_KEY = os.environ.get("SECRET_KEY", "radio-secret-2024")
 ALLOWED_EXTENSIONS = {'.mp3', '.m4a', '.wav'}
+
+def generate_token():
+    payload = {
+        "admin": True,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+def verify_token(token):
+    try:
+        jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return True
+    except:
+        return False
 
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get('admin'):
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token or not verify_token(token):
+            return jsonify({"error": "No autorizado"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_page_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Para páginas HTML verificamos el token en cookie
+        token = request.cookies.get("admin_token", "")
+        if not token or not verify_token(token):
             return redirect('/admin/login')
         return f(*args, **kwargs)
     return decorated
 
 @app.route('/admin')
-@admin_required
+@admin_page_required
 def admin_panel():
     return send_from_directory('templates', 'admin.html')
 
@@ -356,14 +383,17 @@ def admin_login():
         return send_from_directory('templates', 'login.html')
     data = request.get_json()
     if data.get('password') == ADMIN_PASSWORD:
-        session['admin'] = True
-        return jsonify({"ok": True})
+        token = generate_token()
+        res = jsonify({"ok": True, "token": token})
+        res.set_cookie("admin_token", token, httponly=True, samesite='Strict', max_age=28800)
+        return res
     return jsonify({"ok": False}), 401
 
 @app.route('/admin/logout', methods=['POST'])
 def admin_logout():
-    session.pop('admin', None)
-    return jsonify({"ok": True})
+    res = jsonify({"ok": True})
+    res.delete_cookie("admin_token")
+    return res
 
 @app.route('/admin/api/songs')
 @admin_required
