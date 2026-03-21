@@ -47,8 +47,8 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
     volumes:
-      - ${MUSIC_PATH:-./musica}:/app/musica
-      - ${COOKIES_PATH:-./cookies.txt}:/app/cookies.txt
+      - ${MUSIC_PATH}:/app/musica
+      - ${COOKIES_PATH}:/app/cookies.txt
     depends_on:
       - icecast
       - liquidsoap
