@@ -133,7 +133,7 @@ async function searchYoutube() {
 
         container.innerHTML = data.results.map(v => `
             <div class="yt-result">
-                <img class="yt-thumb" src="${v.thumbnail}" onerror="this.style.display='none'">
+                <img class="yt-thumb" src="${v.thumbnail || ''}" onerror="this.style.display='none'">
                 <div class="yt-info">
                     <div class="yt-title" title="${v.title}">${v.title}</div>
                     <div class="yt-meta">${v.channel} · ${v.duration}</div>
