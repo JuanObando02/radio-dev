@@ -1,3 +1,5 @@
 FROM savonet/liquidsoap:v2.2.5
+
 COPY radio.liq /app/radio.liq
+
 CMD ["liquidsoap", "/app/radio.liq"]
