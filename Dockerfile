@@ -9,10 +9,11 @@ RUN apt-get update && apt-get install -y ffmpeg curl unzip && \
 ENV DENO_INSTALL="/root/.deno"
 ENV PATH="$DENO_INSTALL/bin:$PATH"
 
-RUN pip install flask requests
+RUN pip install flask requests pyjwt
 
 WORKDIR /app
 
+COPY core/ ./core/
 COPY autodj.py .
 COPY templates/ ./templates/
 COPY static/ ./static/

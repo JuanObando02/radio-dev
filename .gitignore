@@ -1,0 +1,25 @@
+# Secretos
+.env
+cookies.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env/
+
+# Docker
+.dockerignore
+
+# Archivos de música y multimedia
+musica/
+static/uploads/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

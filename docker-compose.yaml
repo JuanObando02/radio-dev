@@ -44,6 +44,8 @@ services:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - DASHBOARD_URL=${DASHBOARD_URL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
     volumes:
       - /home/ubuntu/musica:/app/musica
       - /home/ubuntu/cookies.txt:/app/cookies.txt
