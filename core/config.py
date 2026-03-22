@@ -22,3 +22,10 @@ TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or "radio1234"
 SECRET_KEY = os.environ.get("SECRET_KEY") or "radio-secret-2024"
 ALLOWED_EXTENSIONS = {'.mp3', '.m4a', '.wav'}
+
+print("--- CONFIGURACIÓN CARGADA ---", flush=True)
+print(f"📻 STREAM_URL: {STREAM_URL}", flush=True)
+print(f"🌐 DASHBOARD_URL: {DASHBOARD_URL}", flush=True)
+print(f"📡 ICECAST: {ICECAST_HOST}:{ICECAST_PORT}", flush=True)
+print(f"🤖 TELEGRAM CHAT: {TELEGRAM_CHAT_ID}", flush=True)
+print("----------------------------", flush=True)
