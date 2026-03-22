@@ -6,7 +6,7 @@ services:
     image: moul/icecast
     container_name: ${CONTAINER_NAME_ICECAST:-radio_icecast}
     ports:
-      - "${PORT_ICECAST:-8005}:8000"
+      - "${PORT_ICECAST:-8010}:8000"
     environment:
       - ICECAST_SOURCE_PASSWORD=${RADIO_PASS}
       - ICECAST_ADMIN_PASSWORD=${RADIO_ADMIN}
@@ -44,7 +44,7 @@ services:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - DASHBOARD_URL=${DASHBOARD_URL}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_PASSWORD=${RADIO_ADMIN}
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - /home/ubuntu/musica:/app/musica
