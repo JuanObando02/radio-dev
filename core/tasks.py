@@ -3,7 +3,7 @@ import os
 import requests
 
 from core.config import MUSIC_DIR, ICECAST_HOST, ICECAST_PORT
-from core.state import state_lock, queue_lock, radio_state, song_queue
+from core.state import state_lock, queue_lock, radio_state, song_queue, download_queue, download_lock
 from core.services.liquidsoap import get_liq_queue_size, push_to_liquidsoap
 from core.services.youtube import download_song 
 
@@ -20,7 +20,7 @@ def queue_manager():
                         song = song_queue.pop(0)
                 push_to_liquidsoap(song)
         time.sleep(2)
-        
+
 def download_manager():
     print("⬇️ Gestor de descargas encoladas iniciado", flush=True)
     while True:
