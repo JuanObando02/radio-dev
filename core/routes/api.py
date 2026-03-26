@@ -6,7 +6,7 @@ import subprocess
 import threading
 
 from core.config import ICECAST_HOST, ICECAST_PORT, STREAM_URL
-from core.state import state_lock, queue_lock, pending_lock, radio_state, song_queue, pending_downloads
+from core.state import state_lock, queue_lock, pending_lock, radio_state, song_queue, pending_downloads, download_queue, download_lock
 from core.services.liquidsoap import liq_command
 from core.services.telegram import telegram_send, telegram_answer_callback, telegram_edit_message
 from core.services.youtube import download_song
@@ -24,6 +24,9 @@ def get_playlist():
         title = radio_state["current_title"]
     with queue_lock:
         python_queue = list(song_queue)
+        
+    if python_queue:
+        print(f"📋 Cola activa: {python_queue}", flush=True)
     
     # También consultar cola de Liquidsoap
     liq_queue = []
@@ -56,9 +59,17 @@ def now_playing_proxy():
 
 @api_bp.route('/api/play-next/<path:song_name>', methods=['POST'])
 def play_next(song_name):
+    import urllib.parse
+    song_name = urllib.parse.unquote(song_name)
+    
     with state_lock:
         playlist = radio_state["playlist"]
+    
+    # Debug log para ver qué estamos recibiendo
+    print(f"📥 Solicitud para encolar: {song_name}", flush=True)
+    
     if song_name not in playlist:
+        print(f"❌ Error: La canción '{song_name}' no existe en la playlist.", flush=True)
         return jsonify({"error": "Canción no encontrada"}), 404
     with queue_lock:
         if song_name in song_queue:
@@ -91,7 +102,7 @@ def search_youtube():
                     "channel": v.get("channel") or v.get("uploader"),
                     "duration": f"{dur // 60}:{str(dur % 60).zfill(2)}",
                     "url": f"https://youtube.com/watch?v={v.get('id')}",
-                    "thumbnail": v.get("thumbnail"),
+                    "thumbnail": v.get("thumbnail") or f"https://i.ytimg.com/vi/{v.get('id')}/mqdefault.jpg",
                 })
             except:
                 continue
@@ -161,14 +172,18 @@ def telegram_webhook():
         return jsonify({"ok": True})
 
     if action == "approve":
-        telegram_answer_callback(callback_id, "✅ Aprobado, descargando...")
+        # Calculamos la posición en la cola para darle feedback al usuario
+        with download_lock:
+            posicion = len(download_queue) + 1
+            download_queue.append({
+                "url": download_info["url"],
+                "title": download_info["title"],
+                "message_id": message_id
+            })
+            
+        telegram_answer_callback(callback_id, f"✅ Encolado (Posición {posicion})")
         telegram_edit_message(message_id,
-            f"✅ *Descarga aprobada*\n\n🎵 {download_info['title']}\nDescargando...")
-        threading.Thread(
-            target=download_song,
-            args=(download_info["url"], download_info["title"], message_id),
-            daemon=True
-        ).start()
+            f"⏳ *Descarga en cola (Pos. {posicion})*\n\n🎵 {download_info['title']}\nEsperando turno...")
     else:
         telegram_answer_callback(callback_id, "❌ Rechazado")
         telegram_edit_message(message_id,

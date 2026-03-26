@@ -8,6 +8,10 @@ queue_lock = threading.Lock()
 pending_downloads = {}
 pending_lock = threading.Lock()
 
+# --- COLA DE DESCARGAS APROBADAS ---
+download_queue = []
+download_lock = threading.Lock()
+
 # --- ESTADO DE LA RADIO ---
 radio_state = {
     "current_title": "Iniciando...",

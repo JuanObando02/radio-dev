@@ -23,6 +23,10 @@ radio = mksafe(
   )
 )
 
+# --- Normalización de volumen ---
+# Ajusta dinámicamente el audio para que todo suene a un nivel parejo
+radio = normalize(radio)
+
 # --- Salida hacia Icecast ---
 output.icecast(
   %mp3(bitrate=128),

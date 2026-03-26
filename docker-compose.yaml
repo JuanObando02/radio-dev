@@ -24,7 +24,7 @@ services:
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8000
       - ICECAST_PASS=${RADIO_PASS}
-      - ICECAST_MOUNT=/radio.mp3
+      - ICECAST_MOUNT=/radio
     command: liquidsoap /app/radio.liq
     depends_on:
       - icecast
