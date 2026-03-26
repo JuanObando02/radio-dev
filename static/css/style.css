@@ -245,8 +245,17 @@ h1 {
     padding: 12px 16px;
     margin-bottom: 20px;
     display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.now-playing-info {
+    display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow: hidden;
 }
 
 .now-playing-label {
@@ -263,6 +272,36 @@ h1 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.btn-skip {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text);
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.btn-skip:hover:not(:disabled) {
+    background: rgba(29, 185, 84, 0.2);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-skip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: transparent;
+    border-color: #333;
+    color: #555;
 }
 
 .yt-result {

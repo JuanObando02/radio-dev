@@ -15,8 +15,13 @@
             <source src="{{ stream_url }}" type="audio/mpeg">
         </audio>
         <div class="now-playing-bar">
-            <span class="now-playing-label">▶ Sonando ahora</span>
-            <span class="now-playing-title" id="now-playing-title">—</span>
+            <div class="now-playing-info">
+                <span class="now-playing-label">▶ Sonando ahora</span>
+                <span class="now-playing-title" id="now-playing-title">—</span>
+            </div>
+            <button class="btn-skip" id="btn-skip" onclick="voteSkip()" style="display: none;">
+                ⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">0</span>)
+            </button>
         </div>
 
         <div class="stats-bar">

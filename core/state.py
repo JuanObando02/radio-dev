@@ -16,6 +16,8 @@ download_lock = threading.Lock()
 radio_state = {
     "current_title": "Iniciando...",
     "playlist": [],
+    "current_track_for_votes": None,
+    "voted_ips": set()
 }
 
 state_lock = threading.Lock()

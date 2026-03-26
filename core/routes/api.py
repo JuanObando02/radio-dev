@@ -7,7 +7,7 @@ import threading
 
 from core.config import ICECAST_HOST, ICECAST_PORT, STREAM_URL
 from core.state import state_lock, queue_lock, pending_lock, radio_state, song_queue, pending_downloads, download_queue, download_lock
-from core.services.liquidsoap import liq_command
+from core.services.liquidsoap import liq_command, skip_current_song
 from core.services.telegram import telegram_send, telegram_answer_callback, telegram_edit_message
 from core.services.youtube import download_song
 
@@ -53,9 +53,74 @@ def now_playing_proxy():
     try:
         url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
         response = requests.get(url, timeout=2)
-        return jsonify(response.json())
+        data = response.json()
+        
+        # Interceptar stats para inyectar info de saltos (skip)
+        source = data.get("icestats", {}).get("source", {})
+        if isinstance(source, list) and len(source) > 0:
+            source = source[0]
+            
+        song_title = source.get("title", "")
+        listeners = source.get("listeners", 0)
+        
+        with state_lock:
+            # Reseteo de votos al cambiar canción
+            if song_title != radio_state["current_track_for_votes"]:
+                radio_state["current_track_for_votes"] = song_title
+                radio_state["voted_ips"].clear()
+                
+            if listeners <= 3:
+                required = 1
+            elif 4 <= listeners <= 10:
+                required = max(1, listeners // 2)
+            else:
+                required = (listeners // 2) + 1
+                
+            data["skip_votes"] = len(radio_state["voted_ips"])
+            data["skip_required"] = required
+            
+        return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/api/vote-skip', methods=['POST'])
+def vote_skip():
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if client_ip and ',' in client_ip:
+        client_ip = client_ip.split(',')[0].strip()
+        
+    try:
+        url = f"http://{ICECAST_HOST}:{ICECAST_PORT}/status-json.xsl"
+        response = requests.get(url, timeout=2)
+        data = response.json()
+        source = data.get("icestats", {}).get("source", {})
+        if isinstance(source, list) and len(source) > 0:
+            source = source[0]
+        listeners = source.get("listeners", 0)
+    except:
+        listeners = 0
+
+    with state_lock:
+        if client_ip in radio_state["voted_ips"]:
+            return jsonify({"error": "Ya has votado para saltar esta canción."}), 400
+            
+        radio_state["voted_ips"].add(client_ip)
+        
+        if listeners <= 3:
+            required = 1
+        elif 4 <= listeners <= 10:
+            required = max(1, listeners // 2)
+        else:
+            required = (listeners // 2) + 1
+            
+        if len(radio_state["voted_ips"]) >= required:
+            # Ejecutar salto real
+            skip_current_song()
+            # Prevenir colisiones múltiples
+            radio_state["voted_ips"].clear()
+            return jsonify({"ok": True, "skipped": True, "message": "¡Voto aceptado y canción saltada!"})
+            
+    return jsonify({"ok": True, "skipped": False, "message": "Voto registrado correctamente."})
 
 @api_bp.route('/api/play-next/<path:song_name>', methods=['POST'])
 def play_next(song_name):

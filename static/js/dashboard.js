@@ -27,6 +27,15 @@ async function updateDashboard() {
         document.getElementById('now-playing-title').textContent = data.now_playing || '—';
         document.getElementById('total-songs').textContent = data.songs?.length || '0';
 
+        // Reseteo del botón de skip si la canción cambió
+        const btnSkip = document.getElementById('btn-skip');
+        if (currentSong && currentSong !== data.now_playing) {
+            if (btnSkip) {
+                btnSkip.disabled = false;
+                btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">0</span>)`;
+            }
+        }
+
         if (!data.songs || data.songs.length === 0) {
             document.getElementById('playlist-content').innerHTML =
                 '<p style="padding: 20px; color: #555;">⏱ Cargando playlist...</p>';
@@ -36,6 +45,22 @@ async function updateDashboard() {
         allSongs = data.songs;
         currentSong = data.now_playing;
         queue = data.queue || [];
+
+        // Actualizar datos del skip en UI
+        if (stats.skip_required !== undefined) {
+            btnSkip.style.display = 'flex';
+            const skipCountEl = document.getElementById('skip-count');
+            const skipReqEl = document.getElementById('skip-required');
+            if (skipCountEl) skipCountEl.textContent = stats.skip_votes;
+            if (skipReqEl) skipReqEl.textContent = stats.skip_required;
+            
+            // Si backend indica 0 votos, y nosotros estábamos deshabilitados, nos reactivamos
+            // (esto previene quedarse trabado si hubo un reinicio rápido)
+            if (stats.skip_votes === 0 && btnSkip.disabled && btnSkip.innerHTML.includes('Votaste')) {
+                btnSkip.disabled = false;
+                btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">${stats.skip_required}</span>)`;
+            }
+        }
 
         renderPlaylist();
         renderQueue();
@@ -182,6 +207,41 @@ async function requestDownload(url, title, channel, duration, btn) {
 // Enter para buscar en YouTube
 document.getElementById('yt-search-input')
     .addEventListener('keydown', e => { if (e.key === 'Enter') searchYoutube(); });
+
+async function voteSkip() {
+    const btn = document.getElementById('btn-skip');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Votando...';
+
+    try {
+        const res = await fetch('/api/vote-skip', { method: 'POST' });
+        const data = await res.json();
+        
+        if (res.ok && data.ok) {
+            if (data.skipped) {
+                btn.innerHTML = '✨ Saltado';
+                setTimeout(updateDashboard, 1000);
+            } else {
+                btn.innerHTML = '✅ Votado';
+                setTimeout(updateDashboard, 500);
+            }
+        } else {
+            alert(data.error || "Ocurrió un error al votar");
+            if (data.error && data.error.includes("Ya has votado")) {
+                btn.disabled = true;
+                btn.innerHTML = '✅ Ya votaste';
+            } else {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    } catch (e) {
+        alert("Error de conexión");
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 
 setInterval(updateDashboard, 5000);
 updateDashboard();
