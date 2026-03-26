@@ -7,6 +7,7 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 
 from core.config import ADMIN_PASSWORD, SECRET_KEY, ALLOWED_EXTENSIONS, MUSIC_DIR
+from core.services.liquidsoap import skip_current_song
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -42,6 +43,16 @@ def admin_page_required(f):
             return redirect('/admin/login')
         return f(*args, **kwargs)
     return decorated
+    
+@admin_bp.route('/api/admin/skip', methods=['POST'])
+@admin_required
+def handle_skip():
+    # Aquí puedes agregar la verificación de sesión de tu panel de admin (si la tienes)
+    
+    if skip_current_song():
+        return jsonify({"ok": True, "message": "Saltando a la siguiente canción..."}), 200
+    else:
+        return jsonify({"ok": False, "message": "Error de comunicación con Liquidsoap."}), 500
 
 @admin_bp.route('/admin')
 @admin_page_required

@@ -1,0 +1,256 @@
+:root {
+    --primary: #1DB954;
+    --bg: #121212;
+    --card: #1e1e1e;
+    --text: #ffffff;
+    --danger: #e74c3c;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 700px;
+}
+
+h1 {
+    color: var(--primary);
+    font-size: 1.8rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 24px;
+}
+
+h2 {
+    font-size: 1rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+}
+
+/* Login */
+.login-card {
+    background: var(--card);
+    border-radius: 15px;
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.login-card input {
+    width: 100%;
+    background: #2a2a2a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    padding: 10px 14px;
+    outline: none;
+    margin-bottom: 12px;
+}
+
+.login-card input:focus {
+    border-color: var(--primary);
+}
+
+.btn {
+    background: var(--primary);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+.btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+.error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+
+/* Stats */
+.stats-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.stat {
+    flex: 1;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* Upload */
+.upload-card {
+    background: var(--card);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.upload-area {
+    border: 2px dashed #333;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    margin-bottom: 12px;
+}
+
+.upload-area:hover,
+.upload-area.drag {
+    border-color: var(--primary);
+}
+
+.upload-area p {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 8px;
+}
+
+#upload-input {
+    display: none;
+}
+
+.progress {
+    background: #2a2a2a;
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 8px;
+    display: none;
+}
+
+.progress-bar {
+    background: var(--primary);
+    height: 100%;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.upload-status {
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 8px;
+}
+
+/* Songs */
+.songs-card {
+    background: var(--card);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.songs-scroll {
+    max-height: 500px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+.song-row {
+    padding: 12px 20px;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.song-row:hover {
+    background: #282828;
+}
+
+.song-row-name {
+    flex: 1;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-bar {
+    padding: 12px 20px;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.search-bar input {
+    width: 100%;
+    background: #2a2a2a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    outline: none;
+}
+
+.search-bar input:focus {
+    border-color: var(--primary);
+}
+
+.logout {
+    float: right;
+    font-size: 0.8rem;
+    color: #666;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.logout:hover {
+    color: var(--text);
+}
