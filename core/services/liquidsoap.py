@@ -5,10 +5,11 @@ from core.config import LIQUIDSOAP_HOST, LIQUIDSOAP_PORT, MUSIC_DIR
 
 def skip_current_song():
     print("⏭️ Enviando comando skip a Liquidsoap...", flush=True)
-    # Intentamos saltar la fuente 'radio' que controla toda la salida
-    response = liq_command("radio.skip")
-    print(f"→ Respuesta de Liquidsoap: {response}", flush=True)
-    return response is not None
+    # Saltamos la ambos orígenes, ya que el 'fallback' genérico no siempre tiene habilitado el skip
+    res_queue = liq_command("radio_queue.skip")
+    res_fallback = liq_command("fallback.skip")
+    print(f"→ Respuesta Liquidsoap - Queue: {res_queue} | Fallback: {res_fallback}", flush=True)
+    return True
 
 def liq_command(cmd):
     try:

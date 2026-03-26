@@ -47,7 +47,6 @@ h1 {
 }
 
 .stat.full-width {
-    flex: none;
     width: 100%;
     align-items: center;
 }
