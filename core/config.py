@@ -3,7 +3,10 @@ import os
 # Variables de entorno
 
 # --- CONEXIONES ---
-MUSIC_DIR = "/app/musica"
+MUSIC_DIR = os.environ.get("MUSIC_DIR", "/app/musica")
+if not os.path.exists(MUSIC_DIR):
+    MUSIC_DIR = "./musica"
+    os.makedirs(MUSIC_DIR, exist_ok=True)
 ICECAST_HOST = os.environ.get("ICECAST_HOST") or "icecast"
 ICECAST_PORT = os.environ.get("ICECAST_PORT") or "8000"
 LIQUIDSOAP_HOST = os.environ.get("LIQUIDSOAP_HOST") or "liquidsoap"
