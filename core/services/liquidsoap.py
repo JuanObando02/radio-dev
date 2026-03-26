@@ -4,17 +4,11 @@ import os
 from core.config import LIQUIDSOAP_HOST, LIQUIDSOAP_PORT, MUSIC_DIR
 
 def skip_current_song():
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(3.0)
-            s.connect(('liquidsoap', 1234)) 
-            s.sendall(b"radio.skip\r\n")
-            s.sendall(b"quit\r\n")
-        print("⏭️ Comando 'skip' enviado a Liquidsoap.", flush=True)
-        return True
-    except Exception as e:
-        print(f"❌ Error enviando 'skip' a Liquidsoap: {e}", flush=True)
-        return False
+    print("⏭️ Enviando comando skip a Liquidsoap...", flush=True)
+    # Intentamos saltar la fuente 'radio' que controla toda la salida
+    response = liq_command("radio.skip")
+    print(f"→ Respuesta de Liquidsoap: {response}", flush=True)
+    return response is not None
 
 def liq_command(cmd):
     try:

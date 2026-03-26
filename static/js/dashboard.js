@@ -25,6 +25,7 @@ async function updateDashboard() {
             })
             : '—';
         document.getElementById('now-playing-title').textContent = data.now_playing || '—';
+        document.getElementById('total-songs').textContent = data.songs?.length || '0';
 
         if (!data.songs || data.songs.length === 0) {
             document.getElementById('playlist-content').innerHTML =
