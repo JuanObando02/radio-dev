@@ -4,6 +4,7 @@ import json
 import requests
 import subprocess
 import threading
+import time
 
 from core.config import ICECAST_HOST, ICECAST_PORT, STREAM_URL
 from core.state import state_lock, queue_lock, pending_lock, radio_state, song_queue, pending_downloads, download_queue, download_lock
@@ -68,6 +69,9 @@ def now_playing_proxy():
             if song_title != radio_state["current_track_for_votes"]:
                 radio_state["current_track_for_votes"] = song_title
                 radio_state["voted_ips"].clear()
+
+            # Evitar doble salto por latencia de Icecast (10 segs)
+            cooldown = (time.time() - radio_state.get("last_skip_time", 0)) < 10
                 
             if listeners <= 3:
                 required = 1
@@ -78,6 +82,7 @@ def now_playing_proxy():
                 
             data["skip_votes"] = len(radio_state["voted_ips"])
             data["skip_required"] = required
+            data["skip_cooldown"] = cooldown
             
         return jsonify(data)
     except Exception as e:
@@ -101,6 +106,9 @@ def vote_skip():
         listeners = 0
 
     with state_lock:
+        if (time.time() - radio_state.get("last_skip_time", 0)) < 10:
+            return jsonify({"error": "Sincronizando audio... espera unos segundos."}), 400
+
         if client_ip in radio_state["voted_ips"]:
             return jsonify({"error": "Ya has votado para saltar esta canción."}), 400
             
@@ -114,7 +122,8 @@ def vote_skip():
             required = (listeners // 2) + 1
             
         if len(radio_state["voted_ips"]) >= required:
-            # Ejecutar salto real
+            # Ejecutar salto real y fijar temporizador
+            radio_state["last_skip_time"] = time.time()
             skip_current_song()
             # Prevenir colisiones múltiples
             radio_state["voted_ips"].clear()

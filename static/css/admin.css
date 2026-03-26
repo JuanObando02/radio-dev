@@ -309,3 +309,46 @@ h2 {
 .logout:hover {
     color: var(--text);
 }
+
+/* --- Responsive Mobile --- */
+@media (max-width: 600px) {
+    body {
+        padding: 20px 10px;
+    }
+
+    h1 {
+        font-size: 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .logout {
+        float: none;
+        align-self: flex-end;
+    }
+
+    .stats-bar {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .now-playing-bar {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+    }
+
+    .player-card {
+        padding: 16px;
+    }
+
+    .upload-card {
+        padding: 16px;
+    }
+
+    .song-row {
+        padding: 10px 15px;
+    }
+}

@@ -342,3 +342,34 @@ h1 {
     color: #666;
     margin-top: 2px;
 }
+
+/* --- Responsive Mobile --- */
+@media (max-width: 600px) {
+    body {
+        padding: 20px 10px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .stats-bar {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .now-playing-bar {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .now-playing-info {
+        align-items: center;
+    }
+
+    .btn-skip {
+        justify-content: center;
+        margin-top: 8px;
+    }
+}

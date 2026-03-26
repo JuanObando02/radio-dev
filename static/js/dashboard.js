@@ -49,16 +49,24 @@ async function updateDashboard() {
         // Actualizar datos del skip en UI
         if (stats.skip_required !== undefined) {
             btnSkip.style.display = 'flex';
-            const skipCountEl = document.getElementById('skip-count');
-            const skipReqEl = document.getElementById('skip-required');
-            if (skipCountEl) skipCountEl.textContent = stats.skip_votes;
-            if (skipReqEl) skipReqEl.textContent = stats.skip_required;
             
-            // Si backend indica 0 votos, y nosotros estábamos deshabilitados, nos reactivamos
-            // (esto previene quedarse trabado si hubo un reinicio rápido)
-            if (stats.skip_votes === 0 && btnSkip.disabled && btnSkip.innerHTML.includes('Votaste')) {
-                btnSkip.disabled = false;
-                btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">${stats.skip_required}</span>)`;
+            if (stats.skip_cooldown) {
+                btnSkip.disabled = true;
+                btnSkip.innerHTML = '⏳ Sincronizando...';
+            } else {
+                // Recuperar estado normal si salió de cooldown o previas deshabilitaciones
+                if (btnSkip.innerHTML.includes('Sincronizando')) {
+                    btnSkip.disabled = false;
+                    btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">${stats.skip_votes}</span>/<span id="skip-required">${stats.skip_required}</span>)`;
+                } else if (stats.skip_votes === 0 && btnSkip.disabled && btnSkip.innerHTML.includes('Votaste')) {
+                    btnSkip.disabled = false;
+                    btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">${stats.skip_required}</span>)`;
+                } else {
+                    const skipCountEl = document.getElementById('skip-count');
+                    const skipReqEl = document.getElementById('skip-required');
+                    if (skipCountEl) skipCountEl.textContent = stats.skip_votes;
+                    if (skipReqEl) skipReqEl.textContent = stats.skip_required;
+                }
             }
         }
 
