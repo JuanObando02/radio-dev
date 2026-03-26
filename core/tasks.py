@@ -5,6 +5,7 @@ import requests
 from core.config import MUSIC_DIR, ICECAST_HOST, ICECAST_PORT
 from core.state import state_lock, queue_lock, radio_state, song_queue
 from core.services.liquidsoap import get_liq_queue_size, push_to_liquidsoap
+from core.services.youtube import download_song 
 
 def queue_manager():
     print("🎵 Gestor de cola iniciado", flush=True)
@@ -19,6 +20,25 @@ def queue_manager():
                         song = song_queue.pop(0)
                 push_to_liquidsoap(song)
         time.sleep(2)
+        
+def download_manager():
+    print("⬇️ Gestor de descargas encoladas iniciado", flush=True)
+    while True:
+        task = None
+        # Revisamos si hay algo en la cola de forma segura
+        with download_lock:
+            if download_queue:
+                task = download_queue.pop(0)
+        
+        if task:
+            # Si hay una tarea, iniciamos la descarga (esto bloquea el hilo hasta terminar)
+            try:
+                download_song(task["url"], task["title"], task["message_id"])
+            except Exception as e:
+                print(f"❌ Error en la descarga encolada: {e}", flush=True)
+        else:
+            # Si no hay descargas, esperamos un poco antes de volver a revisar
+            time.sleep(2)
 
 def get_current_title():
     try:

@@ -7,7 +7,7 @@ from core.config import MUSIC_DIR
 from core.state import state_lock, radio_state
 from core.routes.api import api_bp
 from core.routes.admin import admin_bp
-from core.tasks import track_current_song, scan_playlist, queue_manager
+from core.tasks import track_current_song, scan_playlist, queue_manager, download_manager
 from core.services.telegram import register_telegram_webhook
 
 # --- FLASK APP ---
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     threading.Thread(target=track_current_song, daemon=True).start()
     threading.Thread(target=scan_playlist, daemon=True).start()
     threading.Thread(target=queue_manager, daemon=True).start()
+    threading.Thread(target=download_manager, daemon=True).start()
 
     time.sleep(3)
     register_telegram_webhook()

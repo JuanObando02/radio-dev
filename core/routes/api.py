@@ -6,7 +6,7 @@ import subprocess
 import threading
 
 from core.config import ICECAST_HOST, ICECAST_PORT, STREAM_URL
-from core.state import state_lock, queue_lock, pending_lock, radio_state, song_queue, pending_downloads
+from core.state import state_lock, queue_lock, pending_lock, radio_state, song_queue, pending_downloads, download_queue, download_lock
 from core.services.liquidsoap import liq_command
 from core.services.telegram import telegram_send, telegram_answer_callback, telegram_edit_message
 from core.services.youtube import download_song
@@ -24,6 +24,9 @@ def get_playlist():
         title = radio_state["current_title"]
     with queue_lock:
         python_queue = list(song_queue)
+        
+    if python_queue:
+        print(f"📋 Cola activa: {python_queue}", flush=True)
     
     # También consultar cola de Liquidsoap
     liq_queue = []
@@ -161,14 +164,18 @@ def telegram_webhook():
         return jsonify({"ok": True})
 
     if action == "approve":
-        telegram_answer_callback(callback_id, "✅ Aprobado, descargando...")
+        # Calculamos la posición en la cola para darle feedback al usuario
+        with download_lock:
+            posicion = len(download_queue) + 1
+            download_queue.append({
+                "url": download_info["url"],
+                "title": download_info["title"],
+                "message_id": message_id
+            })
+            
+        telegram_answer_callback(callback_id, f"✅ Encolado (Posición {posicion})")
         telegram_edit_message(message_id,
-            f"✅ *Descarga aprobada*\n\n🎵 {download_info['title']}\nDescargando...")
-        threading.Thread(
-            target=download_song,
-            args=(download_info["url"], download_info["title"], message_id),
-            daemon=True
-        ).start()
+            f"⏳ *Descarga en cola (Pos. {posicion})*\n\n🎵 {download_info['title']}\nEsperando turno...")
     else:
         telegram_answer_callback(callback_id, "❌ Rechazado")
         telegram_edit_message(message_id,
