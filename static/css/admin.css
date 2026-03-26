@@ -330,8 +330,21 @@ h2 {
     }
 
     .stats-bar {
-        flex-direction: column;
-        gap: 10px;
+        flex-direction: row;
+        gap: 6px;
+    }
+
+    .stat {
+        padding: 12px 4px;
+        border-radius: 10px;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+    }
+
+    .stat-value {
+        font-size: 1.3rem;
     }
 
     .now-playing-bar {
