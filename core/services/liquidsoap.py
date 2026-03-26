@@ -15,9 +15,12 @@ def liq_command(cmd):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(5)
             s.connect((LIQUIDSOAP_HOST, LIQUIDSOAP_PORT))
-            s.sendall((cmd + "\n").encode())
-            time.sleep(0.3)
+            # Usamos \r\n que es el estándar de Telnet para mayor compatibilidad
+            s.sendall(f"{cmd}\r\n".encode())
+            time.sleep(0.5)
             response = s.recv(4096).decode().strip()
+            # Enviamos quit para cerrar la sesión de forma limpia
+            s.sendall(b"quit\r\n")
             return response
     except Exception as e:
         print(f"Error telnet Liquidsoap: {e}", flush=True)
