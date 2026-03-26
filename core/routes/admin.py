@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, redirect, send_from_directory
+from flask import Blueprint, request, jsonify, redirect, render_template
 import os
 import shutil
 import jwt
@@ -6,7 +6,7 @@ import datetime
 from functools import wraps
 from werkzeug.utils import secure_filename
 
-from core.config import ADMIN_PASSWORD, SECRET_KEY, ALLOWED_EXTENSIONS, MUSIC_DIR
+from core.config import ADMIN_PASSWORD, SECRET_KEY, ALLOWED_EXTENSIONS, MUSIC_DIR, STREAM_URL
 from core.services.liquidsoap import skip_current_song
 
 admin_bp = Blueprint('admin', __name__)
@@ -57,12 +57,12 @@ def handle_skip():
 @admin_bp.route('/admin')
 @admin_page_required
 def admin_panel():
-    return send_from_directory('templates', 'admin.html')
+    return render_template('admin.html', stream_url=STREAM_URL)
 
 @admin_bp.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'GET':
-        return send_from_directory('templates', 'login.html')
+        return render_template('login.html')
     data = request.get_json()
     if data.get('password') == ADMIN_PASSWORD:
         token = generate_token()

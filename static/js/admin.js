@@ -9,6 +9,16 @@ async function loadData() {
         document.getElementById('disk-used').textContent = data.disk_used;
         document.getElementById('disk-free').textContent = data.disk_free;
         renderSongs(allSongs);
+        
+        // También actualizar el título actual si el elemento existe
+        const nowPlayingEl = document.getElementById('now-playing-title');
+        if (nowPlayingEl) {
+            // Reusar la lógica del dashboard para obtener el título real
+            const statsRes = await fetch('/api/now-playing');
+            const stats = await statsRes.json();
+            const title = stats?.icestats?.source?.title || '—';
+            nowPlayingEl.textContent = title;
+        }
     } catch (e) {
         console.error(e);
     }
@@ -171,6 +181,12 @@ async function skipCurrentSong(btn) {
         btn.textContent = 'Saltar canción';
         btn.disabled = false;
     }
+}
+
+// Alias para el botón que agregó el usuario
+async function skipSong() {
+    const btn = event.target || {};
+    return skipCurrentSong(btn);
 }
 
 // Initial load
