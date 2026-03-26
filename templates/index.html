@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Juan Obando | Radio Dev</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -15,8 +16,13 @@
             <source src="{{ stream_url }}" type="audio/mpeg">
         </audio>
         <div class="now-playing-bar">
-            <span class="now-playing-label">▶ Sonando ahora</span>
-            <span class="now-playing-title" id="now-playing-title">—</span>
+            <div class="now-playing-info">
+                <span class="now-playing-label">▶ Sonando ahora</span>
+                <span class="now-playing-title" id="now-playing-title">—</span>
+            </div>
+            <button class="btn-skip" id="btn-skip" onclick="voteSkip()" style="display: none;">
+                ⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">0</span>)
+            </button>
         </div>
 
         <div class="stats-bar">
@@ -82,7 +88,7 @@
         </div>
 
         <!-- Lista completa -->
-        <p class="section-title">Todas las canciones</p>
+        <p class="section-title" style="margin-top: 24px;">Todas las canciones</p>
         <div class="playlist-card">
             <div class="playlist-scroll" id="playlist-scroll">
                 <div id="playlist-content">

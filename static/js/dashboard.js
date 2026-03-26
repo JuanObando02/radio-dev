@@ -27,6 +27,15 @@ async function updateDashboard() {
         document.getElementById('now-playing-title').textContent = data.now_playing || '—';
         document.getElementById('total-songs').textContent = data.songs?.length || '0';
 
+        // Reseteo del botón de skip si la canción cambió
+        const btnSkip = document.getElementById('btn-skip');
+        if (currentSong && currentSong !== data.now_playing) {
+            if (btnSkip) {
+                btnSkip.disabled = false;
+                btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">0</span>)`;
+            }
+        }
+
         if (!data.songs || data.songs.length === 0) {
             document.getElementById('playlist-content').innerHTML =
                 '<p style="padding: 20px; color: #555;">⏱ Cargando playlist...</p>';
@@ -36,6 +45,30 @@ async function updateDashboard() {
         allSongs = data.songs;
         currentSong = data.now_playing;
         queue = data.queue || [];
+
+        // Actualizar datos del skip en UI
+        if (stats.skip_required !== undefined) {
+            btnSkip.style.display = 'flex';
+            
+            if (stats.skip_cooldown) {
+                btnSkip.disabled = true;
+                btnSkip.innerHTML = '⏳ Sincronizando...';
+            } else {
+                // Recuperar estado normal si salió de cooldown o previas deshabilitaciones
+                if (btnSkip.innerHTML.includes('Sincronizando')) {
+                    btnSkip.disabled = false;
+                    btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">${stats.skip_votes}</span>/<span id="skip-required">${stats.skip_required}</span>)`;
+                } else if (stats.skip_votes === 0 && btnSkip.disabled && btnSkip.innerHTML.includes('Votaste')) {
+                    btnSkip.disabled = false;
+                    btnSkip.innerHTML = `⏭ Saltar (<span id="skip-count">0</span>/<span id="skip-required">${stats.skip_required}</span>)`;
+                } else {
+                    const skipCountEl = document.getElementById('skip-count');
+                    const skipReqEl = document.getElementById('skip-required');
+                    if (skipCountEl) skipCountEl.textContent = stats.skip_votes;
+                    if (skipReqEl) skipReqEl.textContent = stats.skip_required;
+                }
+            }
+        }
 
         renderPlaylist();
         renderQueue();
@@ -182,6 +215,41 @@ async function requestDownload(url, title, channel, duration, btn) {
 // Enter para buscar en YouTube
 document.getElementById('yt-search-input')
     .addEventListener('keydown', e => { if (e.key === 'Enter') searchYoutube(); });
+
+async function voteSkip() {
+    const btn = document.getElementById('btn-skip');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Votando...';
+
+    try {
+        const res = await fetch('/api/vote-skip', { method: 'POST' });
+        const data = await res.json();
+        
+        if (res.ok && data.ok) {
+            if (data.skipped) {
+                btn.innerHTML = '✨ Saltado';
+                setTimeout(updateDashboard, 1000);
+            } else {
+                btn.innerHTML = '✅ Votado';
+                setTimeout(updateDashboard, 500);
+            }
+        } else {
+            alert(data.error || "Ocurrió un error al votar");
+            if (data.error && data.error.includes("Ya has votado")) {
+                btn.disabled = true;
+                btn.innerHTML = '✅ Ya votaste';
+            } else {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    } catch (e) {
+        alert("Error de conexión");
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 
 setInterval(updateDashboard, 5000);
 updateDashboard();
