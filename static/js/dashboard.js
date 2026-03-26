@@ -16,7 +16,13 @@ async function updateDashboard() {
         document.getElementById('listeners').textContent = source?.listeners ?? '—';
         document.getElementById('peak').textContent = source?.listener_peak ?? '—';
         document.getElementById('stream-start').textContent = source?.stream_start
-            ? new Date(source.stream_start).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+            ? new Date(source.stream_start).toLocaleString('es-CO', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            })
             : '—';
         document.getElementById('now-playing-title').textContent = data.now_playing || '—';
 

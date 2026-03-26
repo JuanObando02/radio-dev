@@ -59,9 +59,17 @@ def now_playing_proxy():
 
 @api_bp.route('/api/play-next/<path:song_name>', methods=['POST'])
 def play_next(song_name):
+    import urllib.parse
+    song_name = urllib.parse.unquote(song_name)
+    
     with state_lock:
         playlist = radio_state["playlist"]
+    
+    # Debug log para ver qué estamos recibiendo
+    print(f"📥 Solicitud para encolar: {song_name}", flush=True)
+    
     if song_name not in playlist:
+        print(f"❌ Error: La canción '{song_name}' no existe en la playlist.", flush=True)
         return jsonify({"error": "Canción no encontrada"}), 404
     with queue_lock:
         if song_name in song_queue:
