@@ -9,21 +9,25 @@
 
 <body>
     <div class="container">
-        <h1>⚙️ Admin
-            <button class="btn-danger" style="font-size: 0.8rem; margin-left: 10px;"
-                onclick="skipCurrentSong(this)">Saltar canción</button>
+        <h1>⚙️ Admin Dashboard 
             <span class="logout" onclick="logout()">Cerrar sesión</span>
         </h1>
-        <audio id="radio-player" controls autoplay style="width:100%; margin-bottom: 20px;">
-            <source src="{{ stream_url }}" type="audio/mpeg">
-        </audio>
-        <div class="now-playing-bar">
-            <span class="now-playing-label">▶ Sonando ahora</span>
-            <span class="now-playing-title" id="now-playing-title">—</span>
+
+        <!-- Player & Control -->
+        <div class="player-card">
+            <div class="now-playing-bar">
+                <span class="now-playing-label">▶ Sonando ahora</span>
+                <span class="now-playing-title" id="now-playing-title">—</span>
+            </div>
+            
+            <audio id="radio-player" controls autoplay style="width:100%; margin-bottom: 20px;">
+                <source src="{{ stream_url }}" type="audio/mpeg">
+            </audio>
+
+            <button onclick="skipSong()" class="btn-warning">
+                ⏭️ Saltar Canción Actual
+            </button>
         </div>
-        <button onclick="skipSong()" class="btn btn-warning">
-            ⏭️ Saltar Canción
-        </button>
 
         <!-- Stats -->
         <div class="stats-bar">

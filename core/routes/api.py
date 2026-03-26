@@ -94,7 +94,7 @@ def search_youtube():
                     "channel": v.get("channel") or v.get("uploader"),
                     "duration": f"{dur // 60}:{str(dur % 60).zfill(2)}",
                     "url": f"https://youtube.com/watch?v={v.get('id')}",
-                    "thumbnail": v.get("thumbnail"),
+                    "thumbnail": v.get("thumbnail") or f"https://i.ytimg.com/vi/{v.get('id')}/mqdefault.jpg",
                 })
             except:
                 continue
